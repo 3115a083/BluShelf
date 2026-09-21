@@ -1,0 +1,16 @@
+title,original_title,kind,format,year,barcode,location,rating,favorite,played,notes
+Metropolis,Metropolis,VIDEO,Blu-ray,1927,,Wohnzimmer/Regal 1,4.5,true,true,Stummfilm
+Spirited Away,Sen to Chihiro no kamikakushi,VIDEO,Blu-ray,2001,,Wohnzimmer/Regal 1,5,true,true,
+The Matrix,The Matrix,VIDEO,UHD Blu-ray,1999,,Wohnzimmer/Regal 2,4.5,true,true,
+Alien,Alien,VIDEO,UHD Blu-ray,1979,,Wohnzimmer/Regal 2,5,true,true,
+Arrival,Arrival,VIDEO,Blu-ray,2016,,Wohnzimmer/Regal 2,4.5,false,true,
+Blade Runner,Blade Runner,VIDEO,Blu-ray,1982,,Wohnzimmer/Regal 2,5,true,true,
+Nosferatu,Nosferatu eine Symphonie des Grauens,VIDEO,DVD,1922,,Arbeitszimmer/Regal,4,false,false,
+Stop Making Sense,Stop Making Sense,VIDEO,Blu-ray,1984,,Wohnzimmer/Regal 3,4.5,true,false,
+Kind of Blue,Kind of Blue,AUDIO,Vinyl,1959,,Wohnzimmer/Plattenregal,5,true,true,Miles Davis
+Blue Train,Blue Train,AUDIO,Vinyl,1957,,Wohnzimmer/Plattenregal,4.5,false,true,John Coltrane
+Discovery,Discovery,AUDIO,CD,2001,,Arbeitszimmer/CD Regal,4.5,true,true,Daft Punk
+Dummy,Dummy,AUDIO,CD,1994,,Arbeitszimmer/CD Regal,4.5,false,false,Portishead
+Hounds of Love,Hounds of Love,AUDIO,Vinyl,1985,,Wohnzimmer/Plattenregal,5,true,true,Kate Bush
+Mezzanine,Mezzanine,AUDIO,CD,1998,,Arbeitszimmer/CD Regal,4.5,true,false,Massive Attack
+Songs in the Key of Life,Songs in the Key of Life,AUDIO,Vinyl,1976,,Wohnzimmer/Plattenregal,5,true,true,Stevie Wonder
