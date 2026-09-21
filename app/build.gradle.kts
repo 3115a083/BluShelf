@@ -14,6 +14,7 @@ android {
         versionName = "0.1.0"
     }
     buildFeatures { compose = true }
+    testOptions { unitTests.isReturnDefaultValues = true }
 }
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2025.09.01"))
@@ -22,5 +23,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    testImplementation("junit:junit:4.13.2")
 }

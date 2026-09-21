@@ -1,7 +1,20 @@
 <resources>
-<string name="app_name">BluShelf</string>
-<string name="shelf">Regal</string>
-<string name="swipe">Swipe</string>
-<string name="settings">Einstellungen</string>
-<string name="empty_shelf">Dein Regal ist leer</string>
+    <string name="app_name">BluShelf</string>
+    <string name="shelf">Regal</string>
+    <string name="swipe">Swipe</string>
+    <string name="settings">Einstellungen</string>
+    <string name="empty_shelf">Dein Regal ist leer</string>
+    <string name="empty_shelf_hint">Importiere eine CSV-Datei, um diese frühe Testversion zu verwenden.</string>
+    <string name="import_csv">CSV importieren</string>
+    <string name="import_success">%1$d Medien importiert</string>
+    <string name="import_failure">CSV-Import fehlgeschlagen</string>
+    <string name="file_read_failure">Die ausgewählte Datei konnte nicht gelesen werden</string>
+    <string name="file_too_large">Die CSV-Datei überschreitet das Limit von 10 MB</string>
+    <string name="media_count">%1$d Medien</string>
+    <string name="video">Video</string>
+    <string name="audio">Audio</string>
+    <string name="location_value">Standort: %1$s</string>
+    <string name="rating_value">Bewertung: %1$.1f / 5</string>
+    <string name="swipe_not_implemented">Swipe ist in dieser Testversion noch nicht implementiert.</string>
+    <string name="settings_not_implemented">Einstellungen sind in dieser Testversion noch nicht implementiert.</string>
 </resources>
