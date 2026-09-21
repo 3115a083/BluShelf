@@ -21,7 +21,7 @@ android {
     testOptions { unitTests.isReturnDefaultValues = true }
 }
 dependencies {
-    implementation(platform("androidx.compose:compose-bom:2025.09.01"))
+    implementation(platform("androidx.compose:compose-bom:2026.09.00"))
     implementation("androidx.activity:activity-compose:1.11.0")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
