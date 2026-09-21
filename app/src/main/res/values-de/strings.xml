@@ -1,0 +1,7 @@
+<resources>
+<string name="app_name">BluShelf</string>
+<string name="shelf">Regal</string>
+<string name="swipe">Swipe</string>
+<string name="settings">Einstellungen</string>
+<string name="empty_shelf">Dein Regal ist leer</string>
+</resources>
