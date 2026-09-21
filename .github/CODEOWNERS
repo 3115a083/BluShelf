@@ -1,0 +1,8 @@
+# Security-sensitive project files require owner review when branch rules enforce CODEOWNERS.
+/.github/ @3115a083
+/app/src/main/AndroidManifest.xml @3115a083
+/app/build.gradle.kts @3115a083
+/build.gradle.kts @3115a083
+/settings.gradle.kts @3115a083
+/gradle.properties @3115a083
+/SECURITY.md @3115a083
