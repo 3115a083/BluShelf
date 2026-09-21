@@ -21,9 +21,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AudioFile
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Shelves
 import androidx.compose.material.icons.outlined.Swipe
 import androidx.compose.material.icons.outlined.UploadFile
+import androidx.compose.material.icons.outlined.VideoLibrary
 import androidx.compose.material.icons.outlined.VideoFile
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -126,7 +126,7 @@ private fun BluShelfApp(shelfViewModel: ShelfViewModel = viewModel()) {
             snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
                 NavigationBar {
-                    NavigationBarItem(destination == Destination.Shelf, { destination = Destination.Shelf }, { Icon(Icons.Outlined.Shelves, null) }, label = { Text(stringResource(R.string.shelf)) })
+                    NavigationBarItem(destination == Destination.Shelf, { destination = Destination.Shelf }, { Icon(Icons.Outlined.VideoLibrary, null) }, label = { Text(stringResource(R.string.shelf)) })
                     NavigationBarItem(destination == Destination.Swipe, { destination = Destination.Swipe }, { Icon(Icons.Outlined.Swipe, null) }, label = { Text(stringResource(R.string.swipe)) })
                     NavigationBarItem(destination == Destination.Settings, { destination = Destination.Settings }, { Icon(Icons.Outlined.Settings, null) }, label = { Text(stringResource(R.string.settings)) })
                 }
