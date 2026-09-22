@@ -38,13 +38,13 @@ class BluShelfViewModel(application: Application) : AndroidViewModel(application
 
     fun finishOnboarding() { onboardingComplete = true; preferences.edit().putBoolean("onboarding_complete", true).apply() }
     fun setTheme(value: ThemeMode) { themeMode = value; preferences.edit().putString("theme", value.name).apply() }
-    fun setDynamicColor(value: Boolean) { dynamicColor = value; preferences.edit().putBoolean("dynamic_color", value).apply() }
-    fun setPalette(value: ColorPalette) { palette = value; preferences.edit().putString("palette", value.name).apply() }
-    fun setShelfKind(value: ShelfKind) { shelfKind = value; preferences.edit().putString("shelf_kind", value.name).apply() }
-    fun setShelfView(value: ShelfView) { shelfView = value; preferences.edit().putString("shelf_view", value.name).apply() }
+    fun updateDynamicColor(value: Boolean) { dynamicColor = value; preferences.edit().putBoolean("dynamic_color", value).apply() }
+    fun updatePalette(value: ColorPalette) { palette = value; preferences.edit().putString("palette", value.name).apply() }
+    fun updateShelfKind(value: ShelfKind) { shelfKind = value; preferences.edit().putString("shelf_kind", value.name).apply() }
+    fun updateShelfView(value: ShelfView) { shelfView = value; preferences.edit().putString("shelf_view", value.name).apply() }
     fun setWishlistGhosts(value: Boolean) { showWishlistGhosts = value; preferences.edit().putBoolean("wishlist_ghosts", value).apply() }
-    fun setBatchScanning(value: Boolean) { batchScanning = value; preferences.edit().putBoolean("batch_scanning", value).apply() }
-    fun setHapticConfirmation(value: Boolean) { hapticConfirmation = value; preferences.edit().putBoolean("haptic", value).apply() }
+    fun updateBatchScanning(value: Boolean) { batchScanning = value; preferences.edit().putBoolean("batch_scanning", value).apply() }
+    fun updateHapticConfirmation(value: Boolean) { hapticConfirmation = value; preferences.edit().putBoolean("haptic", value).apply() }
 
     fun importCsv(text: String, result: (Result<Int>) -> Unit) {
         CsvImporter.parse(text).fold(

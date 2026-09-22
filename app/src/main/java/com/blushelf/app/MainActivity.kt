@@ -105,7 +105,7 @@ private fun BluShelfRoot(app: BluShelfViewModel = viewModel()) {
                     when (destination) {
                         Destination.SHELF -> ShelfScreen(
                             allItems = items, shelfKind = app.shelfKind, view = app.shelfView,
-                            onShelfKind = app::setShelfKind, onView = app::setShelfView,
+                            onShelfKind = app::updateShelfKind, onView = app::updateShelfView,
                             onImport = { importer.launch(arrayOf("text/csv", "text/comma-separated-values", "text/plain")) },
                             onUnavailable = { message = it }, onAdd = app::addManual,
                             onFavorite = app::toggleFavorite, onPlayed = app::togglePlayed, onWatchlist = app::toggleWatchlist
@@ -113,9 +113,9 @@ private fun BluShelfRoot(app: BluShelfViewModel = viewModel()) {
                         Destination.SWIPE -> SwipeScreen(items, app.shelfKind) { destination = Destination.SHELF }
                         Destination.SETTINGS -> SettingsScreen(
                             app.themeMode, app.dynamicColor, app.palette, app.shelfView, app.showWishlistGhosts,
-                            app.batchScanning, app.hapticConfirmation, app::setTheme, app::setDynamicColor,
-                            app::setPalette, app::setShelfView, app::setWishlistGhosts, app::setBatchScanning,
-                            app::setHapticConfirmation
+                            app.batchScanning, app.hapticConfirmation, app::setTheme, app::updateDynamicColor,
+                            app::updatePalette, app::updateShelfView, app::setWishlistGhosts, app::updateBatchScanning,
+                            app::updateHapticConfirmation
                         ) { message = it }
                     }
                 }
