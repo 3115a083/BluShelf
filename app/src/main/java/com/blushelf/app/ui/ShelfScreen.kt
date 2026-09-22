@@ -106,6 +106,10 @@ fun ShelfScreen(
     onAdd: (String, MediaKind, String, Int?) -> Unit,
     onFavorite: (MediaItem) -> Unit, onPlayed: (MediaItem) -> Unit, onWatchlist: (MediaItem) -> Unit
 ) {
+    val filtersComing = stringResource(R.string.filters_coming)
+    val scannerUnavailable = stringResource(R.string.scanner_not_available)
+    val metadataUnavailable = stringResource(R.string.metadata_not_configured)
+    val detailsComing = stringResource(R.string.details_coming)
     var query by rememberSaveable { mutableStateOf("") }
     var searchVisible by rememberSaveable { mutableStateOf(false) }
     var shelfMenu by remember { mutableStateOf(false) }
@@ -141,10 +145,10 @@ fun ShelfScreen(
                     DropdownMenuItem({ Text(stringResource(R.string.sort_year)) }, { sort = SortMode.YEAR; sortMenu = false })
                     DropdownMenuItem({ Text(stringResource(R.string.sort_rating)) }, { sort = SortMode.RATING; sortMenu = false })
                 } }
-                IconButton({ onUnavailable(stringResource(R.string.filters_coming)) }) { Icon(Icons.Outlined.FilterList, stringResource(R.string.filters)) }
+                IconButton({ onUnavailable(filtersComing) }) { Icon(Icons.Outlined.FilterList, stringResource(R.string.filters)) }
                 Box { FilledIconButton({ addMenu = true }) { Icon(Icons.Outlined.Add, stringResource(R.string.add)) }; DropdownMenu(addMenu, { addMenu = false }) {
-                    DropdownMenuItem({ Text(stringResource(R.string.scan_barcode)) }, { addMenu = false; onUnavailable(stringResource(R.string.scanner_not_available)) }, leadingIcon = { Icon(Icons.Outlined.QrCodeScanner, null) })
-                    DropdownMenuItem({ Text(stringResource(R.string.search_online)) }, { addMenu = false; onUnavailable(stringResource(R.string.metadata_not_configured)) }, leadingIcon = { Icon(Icons.Outlined.Search, null) })
+                    DropdownMenuItem({ Text(stringResource(R.string.scan_barcode)) }, { addMenu = false; onUnavailable(scannerUnavailable) }, leadingIcon = { Icon(Icons.Outlined.QrCodeScanner, null) })
+                    DropdownMenuItem({ Text(stringResource(R.string.search_online)) }, { addMenu = false; onUnavailable(metadataUnavailable) }, leadingIcon = { Icon(Icons.Outlined.Search, null) })
                     DropdownMenuItem({ Text(stringResource(R.string.add_manually)) }, { addMenu = false; showManual = true }, leadingIcon = { Icon(Icons.Outlined.Add, null) })
                     DropdownMenuItem({ Text(stringResource(R.string.import_csv)) }, { addMenu = false; onImport() }, leadingIcon = { Icon(Icons.Outlined.UploadFile, null) })
                 } }
@@ -162,7 +166,7 @@ fun ShelfScreen(
             }
         }
     }
-    selected?.let { item -> QuickView(item, { selected = null }, { onFavorite(item) }, { onPlayed(item) }, { onWatchlist(item) }, { onUnavailable(stringResource(R.string.details_coming)) }) }
+    selected?.let { item -> QuickView(item, { selected = null }, { onFavorite(item) }, { onPlayed(item) }, { onWatchlist(item) }, { onUnavailable(detailsComing) }) }
     if (showManual) ManualAddDialog(kind, { showManual = false }, { title, format, year -> onAdd(title, kind, format, year); showManual = false })
 }
 
@@ -177,13 +181,15 @@ private fun ViewSwitcher(view: ShelfView, onView: (ShelfView) -> Unit) {
 
 @Composable
 private fun EmptyShelf(onImport: () -> Unit, onManual: () -> Unit, onUnavailable: (String) -> Unit) {
+    val scannerUnavailable = stringResource(R.string.scanner_not_available)
+    val metadataUnavailable = stringResource(R.string.metadata_not_configured)
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Icon(Icons.Outlined.GridView, null, Modifier.size(72.dp), tint = MaterialTheme.colorScheme.primary)
         Text(stringResource(R.string.empty_shelf), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 16.dp))
         Text(stringResource(R.string.empty_shelf_product_hint), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp, bottom = 20.dp))
-        Button({ onUnavailable(stringResource(R.string.scanner_not_available)) }) { Icon(Icons.Outlined.QrCodeScanner, null); Text(stringResource(R.string.scan_barcode), Modifier.padding(start = 8.dp)) }
+        Button({ onUnavailable(scannerUnavailable) }) { Icon(Icons.Outlined.QrCodeScanner, null); Text(stringResource(R.string.scan_barcode), Modifier.padding(start = 8.dp)) }
         Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton({ onUnavailable(stringResource(R.string.metadata_not_configured)) }) { Text(stringResource(R.string.search_online)) }
+            OutlinedButton({ onUnavailable(metadataUnavailable) }) { Text(stringResource(R.string.search_online)) }
             OutlinedButton(onManual) { Text(stringResource(R.string.add_manually)) }
         }
         TextButton(onImport, Modifier.padding(top = 8.dp)) { Icon(Icons.Outlined.UploadFile, null); Text(stringResource(R.string.import_collection), Modifier.padding(start = 8.dp)) }
