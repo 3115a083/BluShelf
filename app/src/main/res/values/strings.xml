@@ -9,4 +9,28 @@
     <string name="collection">Shelves and collection</string><string name="manage_shelves">Manage shelves</string><string name="video_audio_shelves">Video and Audio are available</string><string name="custom_fields">Custom fields</string><string name="prepared_not_available">Prepared for a later milestone · not available yet</string><string name="locations">Physical locations</string><string name="tags_collections">Tags and collections</string><string name="wishlist_ghosts">Show wishlist ghosts</string><string name="wishlist_ghosts_summary">Reserved for clearly marked wishlist media in the virtual shelf</string>
     <string name="metadata">Metadata sources</string><string name="not_configured">Not configured</string><string name="digital_servers">Digital media servers</string><string name="sync_backup">Sync and backup</string><string name="sync_status">Sync status</string><string name="local_only">Local only</string><string name="backup">Backup</string><string name="not_available_yet">Not available yet</string><string name="import_export">Import and export</string><string name="csv_import_available">CSV import available · export follows later</string><string name="scanner">Scanner</string><string name="batch_scanning">Batch scanning</string><string name="haptic_confirmation">Haptic confirmation</string><string name="applies_when_scanner_available">Applies when the scanner becomes available</string>
     <string name="privacy_security">Privacy and security</string><string name="local_first">Local-first</string><string name="local_first_summary">Your collection is stored on this device in a Room database</string><string name="no_telemetry_ads">No telemetry or ads</string><string name="no_tracking_summary">BluShelf contains no analytics, advertising or tracking</string><string name="network_on_use">Network only when used</string><string name="network_on_use_summary">Online features remain inactive until you invoke or configure them</string><string name="clear_cache">Clear downloaded artwork cache</string><string name="local_action">Local action · nothing downloaded yet</string><string name="about">About</string><string name="open_source_project">Open-source project</string>
+    <string name="media_count">%1$d physical media</string>
+    <string name="scrubber_hint">Swipe to navigate · hold briefly for precision</string>
+    <string name="random_on">Random on</string>
+    <string name="unplayed_only">Unplayed only</string>
+    <string name="swipe_finished">You reached the end</string>
+    <string name="swipe_finished_hint">Start again or adjust the active filter.</string>
+    <string name="start_again">Start again</string>
+    <string name="already_played">Already played</string>
+    <string name="ready_to_choose">Ready for your next session</string>
+    <string name="provider_setup_later">This provider is not configured. Provider authentication and network metadata are planned for a later milestone.</string>
+    <string name="server_setup_later">This server connection is not configured. BluShelf does not simulate a connection or request credentials in this build.</string>
+    <string name="webdav_setup_later">WebDAV is not available in this build. Collection data remains local on this device.</string>
+    <string name="backup_setup_later">Encrypted backup and restore are not available in this build.</string>
+    <string name="cache_empty">The downloaded artwork cache is already empty.</string>
+    <string name="csv_import_export_available">CSV import and export available</string>
+    <string name="scanner_status">Scanner status</string>
+    <string name="batch_scanning_summary">Remember batch mode for the future scanner</string>
+    <string name="about_blushelf">BluShelf is a local-first organizer for physical video and audio media.</string>
+    <string name="default_shelf">Default shelf</string>
+    <string name="done">Done</string>
+    <string name="import_export_explanation">Import replaces the collection after full validation. Export writes the current local collection as CSV.</string>
+    <string name="export_csv">Export CSV</string>
+    <string name="export_success">Collection exported successfully</string>
+    <string name="export_failure">The collection could not be exported</string>
 </resources>

@@ -1,7 +1,10 @@
 package com.blushelf.app
 
+import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -35,6 +38,7 @@ import com.blushelf.app.ui.OnboardingScreen
 import com.blushelf.app.ui.SettingsScreen
 import com.blushelf.app.ui.ShelfScreen
 import com.blushelf.app.ui.SwipeScreen
+import com.blushelf.app.data.CsvExporter
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
@@ -64,6 +68,8 @@ private fun BluShelfRoot(app: BluShelfViewModel = viewModel()) {
         val importFailure = stringResource(R.string.import_failure)
         val readFailure = stringResource(R.string.file_read_failure)
         val fileTooLarge = stringResource(R.string.file_too_large)
+        val exportSuccess = stringResource(R.string.export_success)
+        val exportFailure = stringResource(R.string.export_failure)
 
         val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
             if (uri != null) {
@@ -80,6 +86,18 @@ private fun BluShelfRoot(app: BluShelfViewModel = viewModel()) {
                     onFailure = { error -> message = error.message ?: readFailure; finishOnImport = false }
                 )
             } else finishOnImport = false
+        }
+        val exporter = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri: Uri? ->
+            if (uri != null) {
+                runCatching {
+                    context.contentResolver.openOutputStream(uri, "wt")?.bufferedWriter(Charsets.UTF_8)?.use {
+                        it.write(CsvExporter.write(items))
+                    } ?: throw IOException(exportFailure)
+                }.fold(
+                    onSuccess = { message = exportSuccess },
+                    onFailure = { error -> message = error.message ?: exportFailure }
+                )
+            }
         }
 
         LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); message = null } }
@@ -112,11 +130,30 @@ private fun BluShelfRoot(app: BluShelfViewModel = viewModel()) {
                         )
                         Destination.SWIPE -> SwipeScreen(items, app.shelfKind) { destination = Destination.SHELF }
                         Destination.SETTINGS -> SettingsScreen(
-                            app.themeMode, app.dynamicColor, app.palette, app.shelfView, app.showWishlistGhosts,
-                            app.batchScanning, app.hapticConfirmation, app::setTheme, app::updateDynamicColor,
-                            app::updatePalette, app::updateShelfView, app::setWishlistGhosts, app::updateBatchScanning,
-                            app::updateHapticConfirmation
-                        ) { message = it }
+                            theme = app.themeMode,
+                            dynamic = app.dynamicColor,
+                            palette = app.palette,
+                            defaultView = app.shelfView,
+                            defaultShelf = app.shelfKind,
+                            wishlistGhosts = app.showWishlistGhosts,
+                            batchScanning = app.batchScanning,
+                            haptic = app.hapticConfirmation,
+                            onTheme = app::setTheme,
+                            onDynamic = app::updateDynamicColor,
+                            onPalette = app::updatePalette,
+                            onDefaultView = app::updateShelfView,
+                            onDefaultShelf = app::updateShelfKind,
+                            onWishlistGhosts = app::setWishlistGhosts,
+                            onBatchScanning = app::updateBatchScanning,
+                            onHaptic = app::updateHapticConfirmation,
+                            onImport = { importer.launch(arrayOf("text/csv", "text/comma-separated-values", "text/plain")) },
+                            onExport = { exporter.launch("blushelf_collection.csv") },
+                            onLanguage = {
+                                val action = if (Build.VERSION.SDK_INT >= 33) Settings.ACTION_APP_LOCALE_SETTINGS else Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                                context.startActivity(Intent(action, Uri.parse("package:" + context.packageName)))
+                            },
+                            onMessage = { message = it }
+                        )
                     }
                 }
             }

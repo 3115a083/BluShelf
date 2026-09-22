@@ -35,6 +35,7 @@ object CsvImporter {
                 rating = rating(data["rating"], rowNumber),
                 favorite = bool(data["favorite"]),
                 played = bool(data["played"]),
+                inWatchlist = bool(data["watchlist"]),
                 notes = data["notes"].orEmpty()
             )
         }

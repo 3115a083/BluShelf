@@ -4,15 +4,20 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -20,6 +25,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -61,6 +67,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -75,14 +82,17 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -93,7 +103,7 @@ import com.blushelf.app.data.MediaItem
 import com.blushelf.app.data.MediaKind
 import com.blushelf.app.data.titleSortKey
 import kotlinx.coroutines.launch
-import java.util.UUID
+import kotlin.math.roundToInt
 
 private enum class SortMode { TITLE, YEAR, RATING }
 
@@ -172,10 +182,10 @@ fun ShelfScreen(
 
 @Composable
 private fun ViewSwitcher(view: ShelfView, onView: (ShelfView) -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilterChip(view == ShelfView.VIRTUAL, { onView(ShelfView.VIRTUAL) }, { Text(stringResource(R.string.virtual_shelf)) }, leadingIcon = { Icon(Icons.Outlined.GridView, null) })
-        FilterChip(view == ShelfView.LIST, { onView(ShelfView.LIST) }, { Text(stringResource(R.string.list)) }, leadingIcon = { Icon(Icons.Outlined.List, null) })
-        FilterChip(view == ShelfView.DETAILED, { onView(ShelfView.DETAILED) }, { Text(stringResource(R.string.detailed)) }, leadingIcon = { Icon(Icons.Outlined.ViewAgenda, null) })
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(view == ShelfView.VIRTUAL, { onView(ShelfView.VIRTUAL) }, { Text(stringResource(R.string.virtual_shelf), maxLines = 1) }, leadingIcon = { Icon(Icons.Outlined.GridView, null) })
+        FilterChip(view == ShelfView.LIST, { onView(ShelfView.LIST) }, { Text(stringResource(R.string.list), maxLines = 1) }, leadingIcon = { Icon(Icons.Outlined.List, null) })
+        FilterChip(view == ShelfView.DETAILED, { onView(ShelfView.DETAILED) }, { Text(stringResource(R.string.detailed), maxLines = 1) }, leadingIcon = { Icon(Icons.Outlined.ViewAgenda, null) })
     }
 }
 
@@ -188,10 +198,8 @@ private fun EmptyShelf(onImport: () -> Unit, onManual: () -> Unit, onUnavailable
         Text(stringResource(R.string.empty_shelf), style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(top = 16.dp))
         Text(stringResource(R.string.empty_shelf_product_hint), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp, bottom = 20.dp))
         Button({ onUnavailable(scannerUnavailable) }) { Icon(Icons.Outlined.QrCodeScanner, null); Text(stringResource(R.string.scan_barcode), Modifier.padding(start = 8.dp)) }
-        Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton({ onUnavailable(metadataUnavailable) }) { Text(stringResource(R.string.search_online)) }
-            OutlinedButton(onManual) { Text(stringResource(R.string.add_manually)) }
-        }
+        OutlinedButton({ onUnavailable(metadataUnavailable) }, Modifier.padding(top = 10.dp).widthIn(min = 220.dp)) { Text(stringResource(R.string.search_online), maxLines = 1) }
+        OutlinedButton(onManual, Modifier.padding(top = 8.dp).widthIn(min = 220.dp)) { Text(stringResource(R.string.add_manually), maxLines = 1) }
         TextButton(onImport, Modifier.padding(top = 8.dp)) { Icon(Icons.Outlined.UploadFile, null); Text(stringResource(R.string.import_collection), Modifier.padding(start = 8.dp)) }
     }
 }
@@ -201,22 +209,93 @@ private fun VirtualShelf(items: List<MediaItem>, selected: MediaItem?, onSelect:
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val currentLetter = items.getOrNull(listState.firstVisibleItemIndex)?.let { titleSortKey(it.title).firstOrNull()?.uppercase() } ?: "#"
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .35f))) {
-        Text(stringResource(R.string.physical_collection), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
-        LazyRow(state = listState, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 14.dp), verticalAlignment = Alignment.Bottom) {
-            items(items, key = { it.id }) { item -> MediaSpine(item, selected?.id == item.id) { onSelect(item) } }
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerLowest)) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(stringResource(R.string.physical_collection), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.media_count, items.size), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Surface(shape = RoundedCornerShape(50), color = MaterialTheme.colorScheme.primaryContainer) {
+                Text(currentLetter, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp))
+            }
         }
-        Box(Modifier.fillMaxWidth().height(18.dp).background(Color(0xFF5A3D2E)))
-        Box(Modifier.fillMaxWidth().height(7.dp).background(Color(0xFF38261E)))
-        Text(stringResource(R.string.quick_navigator, currentLetter), style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(start = 16.dp, top = 10.dp))
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-            ('A'..'Z').forEach { letter ->
-                val active = currentLetter == letter.toString()
-                TextButton(onClick = {
-                    val index = items.indexOfFirst { titleSortKey(it.title).startsWith(letter, true) }
-                    if (index >= 0) scope.launch { listState.animateScrollToItem(index) }
-                }, enabled = items.any { titleSortKey(it.title).startsWith(letter, true) }) {
-                    Text(letter.toString(), style = if (active) MaterialTheme.typography.titleLarge else MaterialTheme.typography.labelLarge, color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+        Surface(
+            Modifier.fillMaxWidth().weight(1f).padding(horizontal = 10.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer
+        ) {
+            Column {
+                Spacer(Modifier.height(12.dp))
+                LazyRow(
+                    state = listState,
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(horizontal = 10.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    items(items, key = { it.id }) { item -> MediaSpine(item, selected?.id == item.id) { onSelect(item) } }
+                }
+                Box(Modifier.fillMaxWidth().height(14.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = .62f)))
+                Box(Modifier.fillMaxWidth().height(7.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = .28f)))
+            }
+        }
+        Text(stringResource(R.string.scrubber_hint), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 18.dp, top = 10.dp))
+        AlphabetScrubber(currentLetter, items) { letter ->
+            val index = items.indexOfFirst { titleSortKey(it.title).startsWith(letter, true) }
+            if (index >= 0) scope.launch { listState.scrollToItem(index) }
+        }
+    }
+}
+
+@Composable
+private fun AlphabetScrubber(current: String, items: List<MediaItem>, onLetter: (Char) -> Unit) {
+    val letters = ('A'..'Z').toList()
+    val enabled = remember(items) { letters.associateWith { letter -> items.any { titleSortKey(it.title).startsWith(letter, true) } } }
+    BoxWithConstraints(
+        Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 10.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .pointerInput(items) {
+                awaitEachGesture {
+                    val down = awaitFirstDown()
+                    val started = System.currentTimeMillis()
+                    fun rawIndex(x: Float) = ((x / size.width) * letters.size).roundToInt().coerceIn(0, letters.lastIndex)
+                    val anchor = rawIndex(down.position.x)
+                    if (enabled[letters[anchor]] == true) onLetter(letters[anchor])
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                        if (!change.pressed) break
+                        val raw = rawIndex(change.position.x)
+                        val precise = System.currentTimeMillis() - started >= 350L
+                        val target = if (precise) (anchor + (raw - anchor) * .38f).roundToInt().coerceIn(0, letters.lastIndex) else raw
+                        if (enabled[letters[target]] == true) onLetter(letters[target])
+                        change.consume()
+                    }
+                }
+            }
+    ) {
+        Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+            letters.forEach { letter ->
+                val active = current == letter.toString()
+                val available = enabled[letter] == true
+                Box(
+                    Modifier.weight(1f).fillMaxHeight().graphicsLayer {
+                        scaleX = if (active) 1.55f else 1f
+                        scaleY = if (active) 1.55f else 1f
+                    },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (active) {
+                        Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primary) {
+                            Text(letter.toString(), color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp))
+                        }
+                    } else {
+                        Text(letter.toString(), style = MaterialTheme.typography.labelSmall, color = if (available) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outlineVariant)
+                    }
                 }
             }
         }
@@ -228,22 +307,22 @@ private fun MediaSpine(item: MediaItem, selected: Boolean, onClick: () -> Unit) 
     val (spineWidth, spineHeight) = formatSize(item.format)
     val lift by animateDpAsState(if (selected) (-18).dp else 0.dp, label = "spine lift")
     val color = formatColor(item.format)
-    Box(Modifier.width(maxOf(56.dp, spineWidth + 12.dp)).requiredHeight(270.dp).clickable(onClick = onClick).semantics { contentDescription = "${item.title}, ${item.format}" }, contentAlignment = Alignment.BottomCenter) {
-        Box(Modifier.offset(y = lift).width(spineWidth).height(spineHeight).clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)).background(color).animateContentSize(), contentAlignment = Alignment.Center) {
-            Text(item.title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, modifier = Modifier.rotate(-90f).width(spineHeight - 20.dp))
-            Text(item.format.take(4), color = Color.White.copy(alpha = .8f), style = MaterialTheme.typography.labelSmall, modifier = Modifier.align(Alignment.BottomCenter).padding(4.dp))
+    Box(Modifier.width(maxOf(50.dp, spineWidth + 14.dp)).requiredHeight(258.dp).clickable(onClick = onClick).semantics { contentDescription = item.title + ", " + item.format }, contentAlignment = Alignment.BottomCenter) {
+        Box(Modifier.offset(y = lift).width(spineWidth).height(spineHeight).clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp)).background(color).border(1.dp, Color.White.copy(alpha = .2f), RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp)).animateContentSize(), contentAlignment = Alignment.Center) {
+            Text(item.title, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.rotate(-90f).width(spineHeight - 34.dp))
+            Text(item.format.take(3).uppercase(), color = Color.White.copy(alpha = .78f), fontSize = 8.sp, maxLines = 1, modifier = Modifier.align(Alignment.BottomCenter).padding(3.dp))
         }
     }
 }
 
 private fun formatSize(format: String): Pair<Dp, Dp> = when {
-    format.contains("VHS", true) -> 74.dp to 225.dp
-    format.contains("DVD", true) -> 54.dp to 230.dp
-    format.contains("UHD", true) -> 46.dp to 208.dp
-    format.contains("Blu", true) -> 44.dp to 202.dp
-    format.contains("Vinyl", true) -> 68.dp to 240.dp
-    format.contains("CD", true) -> 48.dp to 170.dp
-    else -> 50.dp to 205.dp
+    format.contains("VHS", true) -> 54.dp to 218.dp
+    format.contains("DVD", true) -> 40.dp to 226.dp
+    format.contains("UHD", true) -> 32.dp to 202.dp
+    format.contains("Blu", true) -> 30.dp to 198.dp
+    format.contains("Vinyl", true) -> 18.dp to 238.dp
+    format.contains("CD", true) -> 24.dp to 164.dp
+    else -> 30.dp to 198.dp
 }
 
 private fun formatColor(format: String): Color = when {
@@ -258,15 +337,15 @@ private fun formatColor(format: String): Color = when {
 
 @Composable
 private fun SimpleList(items: List<MediaItem>, onClick: (MediaItem) -> Unit) {
-    LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) { items(items, key = { it.id }) { item -> ListItem({ Text(item.title) }, Modifier.clickable { onClick(item) }, supportingContent = { Text(listOfNotNull(item.year?.toString(), item.format).joinToString(" · ")) }, leadingContent = { Icon(if (item.kind == MediaKind.VIDEO) Icons.Outlined.VideoFile else Icons.Outlined.AudioFile, null) }); HorizontalDivider() } }
+    LazyColumn(contentPadding = PaddingValues(vertical = 8.dp)) { items(items, key = { it.id }) { item -> ListItem({ Text(item.title, maxLines = 2, overflow = TextOverflow.Ellipsis) }, Modifier.clickable { onClick(item) }, supportingContent = { Text(listOfNotNull(item.year?.toString(), item.format).joinToString(" · "), maxLines = 1) }, leadingContent = { MediaCover(item, Modifier.size(42.dp, 58.dp), compact = true) }); HorizontalDivider() } }
 }
 
 @Composable
 private fun DetailedList(items: List<MediaItem>, onClick: (MediaItem) -> Unit) {
     LazyColumn(contentPadding = PaddingValues(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { items(items, key = { it.id }) { item ->
         Card(Modifier.fillMaxWidth().clickable { onClick(item) }) { Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(58.dp, 78.dp).clip(RoundedCornerShape(6.dp)).background(formatColor(item.format)), contentAlignment = Alignment.Center) { Icon(if (item.kind == MediaKind.VIDEO) Icons.Outlined.VideoFile else Icons.Outlined.AudioFile, null, tint = Color.White) }
-            Column(Modifier.padding(start = 14.dp).weight(1f)) { Text(item.title, style = MaterialTheme.typography.titleMedium); Text(listOfNotNull(item.year?.toString(), item.format).joinToString(" · ")); if (item.location.isNotBlank()) Text(item.location, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant); item.rating?.let { Text("★ %.1f".format(it), color = MaterialTheme.colorScheme.primary) } }
+            MediaCover(item, Modifier.size(58.dp, 82.dp), compact = true)
+            Column(Modifier.padding(start = 14.dp).weight(1f)) { Text(item.title, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis); Text(listOfNotNull(item.year?.toString(), item.format).joinToString(" · "), maxLines = 1); if (item.location.isNotBlank()) Text(item.location, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis); item.rating?.let { Text("★ %.1f".format(it), color = MaterialTheme.colorScheme.primary) } }
             if (item.favorite) Icon(Icons.Filled.Favorite, null, tint = MaterialTheme.colorScheme.primary)
         } }
     } }
@@ -277,8 +356,8 @@ private fun DetailedList(items: List<MediaItem>, onClick: (MediaItem) -> Unit) {
 private fun QuickView(item: MediaItem, onDismiss: () -> Unit, onFavorite: () -> Unit, onPlayed: () -> Unit, onWatchlist: () -> Unit, onDetails: () -> Unit) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Row(Modifier.fillMaxWidth().padding(20.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            Box(Modifier.size(120.dp, 170.dp).clip(RoundedCornerShape(12.dp)).background(formatColor(item.format)), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(if (item.kind == MediaKind.VIDEO) Icons.Outlined.VideoFile else Icons.Outlined.AudioFile, null, Modifier.size(42.dp), tint = Color.White); Text(stringResource(R.string.artwork_placeholder), color = Color.White, style = MaterialTheme.typography.labelSmall) } }
-            Column(Modifier.weight(1f)) { Text(item.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold); Text(listOfNotNull(item.year?.toString(), item.format).joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant); item.rating?.let { Text("★ %.1f / 5".format(it), modifier = Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.primary) }; if (item.location.isNotBlank()) Text(item.location, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp)) }
+            MediaCover(item, Modifier.size(120.dp, 170.dp))
+            Column(Modifier.weight(1f)) { Text(item.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis); Text(listOfNotNull(item.year?.toString(), item.format).joinToString(" · "), color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1); item.rating?.let { Text("★ %.1f / 5".format(it), modifier = Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.primary) }; if (item.location.isNotBlank()) Text(item.location, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp), maxLines = 2, overflow = TextOverflow.Ellipsis) }
         }
         Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(item.played, onPlayed, { Text(stringResource(if (item.kind == MediaKind.VIDEO) R.string.watched else R.string.listened)) }, leadingIcon = { Icon(Icons.Outlined.CheckCircle, null) })

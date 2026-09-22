@@ -2,7 +2,9 @@
 
 BluShelf is a local-first Android app for organizing physical video and audio media, including Blu-ray, UHD Blu-ray, DVD, VHS, CD and vinyl.
 
-## Features
+## Product direction
+
+The following capabilities describe the planned product. The implemented test-version scope is listed separately below.
 
 - Virtual shelf designed around readable physical-media spines
 - Video and audio shelves with multiple editions and owned copies
@@ -25,11 +27,11 @@ BluShelf is a local-first Android app for organizing physical video and audio me
 BluShelf is under active development. The Android application is built with Kotlin, Jetpack Compose, Material 3 and Room. The current test version includes:
 
 - A persistent Video and Audio collection
-- A virtual shelf with format-specific readable spines, quick navigation and media quick view
+- A virtual shelf with format-specific readable spines, generated local cover representations, media quick view and a gesture-driven A-Z scrubber
 - Simple and detailed list views
 - Local search, title/year/rating sorting and manual media entry
-- UTF-8 CSV import through the Android system file picker
-- A Swipe prototype with skip, temporary session shortlist, pick and undo
+- UTF-8 CSV import and export through Android system file pickers
+- A poster-card Swipe experience with skip, temporary session shortlist, pick, filters and undo
 - Light, dark, system and dynamic-color appearance settings
 - Searchable settings structure for planned providers, servers, backup and scanner features
 - A short, skippable first-run introduction
@@ -48,7 +50,7 @@ The debug APK is written to `app/build/outputs/apk/debug/app-debug.apk`.
 
 ## Early CSV format
 
-Use UTF-8 CSV with a header row. `title`, `kind`, and `format` are required. `kind` must be `VIDEO` or `AUDIO`. Optional columns currently supported are `original_title`, `year`, `barcode`, `location`, `rating`, `favorite`, `played`, and `notes`. Ratings range from 0.5 to 5 in half-star steps. Boolean values accept `true`, `false`, `yes`, `no`, `ja`, `nein`, `1`, and `0`.
+Use UTF-8 CSV with a header row. `title`, `kind`, and `format` are required. `kind` must be `VIDEO` or `AUDIO`. Optional columns currently supported are `original_title`, `year`, `barcode`, `location`, `rating`, `favorite`, `played`, `watchlist`, and `notes`. Ratings range from 0.5 to 5 in half-star steps. Boolean values accept `true`, `false`, `yes`, `no`, `ja`, `nein`, `1`, and `0`.
 
 ## Privacy
 

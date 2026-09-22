@@ -9,4 +9,28 @@
     <string name="collection">Regale und Sammlung</string><string name="manage_shelves">Shelves verwalten</string><string name="video_audio_shelves">Video und Audio sind verfügbar</string><string name="custom_fields">Custom Fields</string><string name="prepared_not_available">Für einen späteren Meilenstein vorbereitet · noch nicht verfügbar</string><string name="locations">Standorte</string><string name="tags_collections">Tags und Sammlungen</string><string name="wishlist_ghosts">Wishlist-Geister anzeigen</string><string name="wishlist_ghosts_summary">Reserviert für klar gekennzeichnete Wunschmedien im virtuellen Regal</string>
     <string name="metadata">Metadatenquellen</string><string name="not_configured">Nicht eingerichtet</string><string name="digital_servers">Digitale Medienserver</string><string name="sync_backup">Sync und Backup</string><string name="sync_status">Sync-Status</string><string name="local_only">Nur lokal</string><string name="backup">Backup</string><string name="not_available_yet">Noch nicht verfügbar</string><string name="import_export">Import und Export</string><string name="csv_import_available">CSV-Import verfügbar · Export folgt später</string><string name="scanner">Scanner</string><string name="batch_scanning">Batch-Scanning</string><string name="haptic_confirmation">Haptische Bestätigung</string><string name="applies_when_scanner_available">Gilt, sobald der Scanner verfügbar ist</string>
     <string name="privacy_security">Datenschutz und Sicherheit</string><string name="local_first">Local-first</string><string name="local_first_summary">Deine Sammlung liegt in einer Room-Datenbank auf diesem Gerät</string><string name="no_telemetry_ads">Keine Telemetrie oder Werbung</string><string name="no_tracking_summary">BluShelf enthält keine Analytics, Werbung oder Tracking</string><string name="network_on_use">Netzwerk nur bei Verwendung</string><string name="network_on_use_summary">Onlinefunktionen bleiben inaktiv, bis du sie aufrufst oder einrichtest</string><string name="clear_cache">Artwork-Cache löschen</string><string name="local_action">Lokale Aktion · noch nichts heruntergeladen</string><string name="about">Über</string><string name="open_source_project">Open-Source-Projekt</string>
+    <string name="media_count">%1$d physische Medien</string>
+    <string name="scrubber_hint">Wischen zum Navigieren · kurz halten für Feinauswahl</string>
+    <string name="random_on">Zufall aktiv</string>
+    <string name="unplayed_only">Nur ungesehen</string>
+    <string name="swipe_finished">Du bist am Ende</string>
+    <string name="swipe_finished_hint">Starte erneut oder ändere den aktiven Filter.</string>
+    <string name="start_again">Neu starten</string>
+    <string name="already_played">Bereits wiedergegeben</string>
+    <string name="ready_to_choose">Bereit für deine nächste Session</string>
+    <string name="provider_setup_later">Diese Quelle ist nicht eingerichtet. Anmeldung und Netzwerk-Metadaten folgen in einem späteren Meilenstein.</string>
+    <string name="server_setup_later">Diese Serververbindung ist nicht eingerichtet. BluShelf simuliert keine Verbindung und fragt in diesem Build keine Zugangsdaten ab.</string>
+    <string name="webdav_setup_later">WebDAV ist in diesem Build nicht verfügbar. Die Sammlung bleibt lokal auf diesem Gerät.</string>
+    <string name="backup_setup_later">Verschlüsseltes Backup und Wiederherstellung sind in diesem Build nicht verfügbar.</string>
+    <string name="cache_empty">Der heruntergeladene Artwork-Cache ist bereits leer.</string>
+    <string name="csv_import_export_available">CSV-Import und -Export verfügbar</string>
+    <string name="scanner_status">Scanner-Status</string>
+    <string name="batch_scanning_summary">Batch-Modus für den zukünftigen Scanner merken</string>
+    <string name="about_blushelf">BluShelf ist ein local-first Organizer für physische Video- und Audiomedien.</string>
+    <string name="default_shelf">Standardregal</string>
+    <string name="done">Fertig</string>
+    <string name="import_export_explanation">Import ersetzt die Sammlung erst nach vollständiger Validierung. Export schreibt die aktuelle lokale Sammlung als CSV.</string>
+    <string name="export_csv">CSV exportieren</string>
+    <string name="export_success">Sammlung erfolgreich exportiert</string>
+    <string name="export_failure">Die Sammlung konnte nicht exportiert werden</string>
 </resources>

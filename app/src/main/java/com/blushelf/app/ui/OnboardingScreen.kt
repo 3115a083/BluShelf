@@ -2,7 +2,6 @@ package com.blushelf.app.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,10 +41,9 @@ fun OnboardingScreen(onCreate: () -> Unit, onImport: () -> Unit, onSkip: () -> U
             Spacer(Modifier.height(10.dp))
             FilledTonalButton(onClick = onImport, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.UploadFile, null); Text(stringResource(R.string.import_csv), Modifier.padding(start = 10.dp)) }
             Spacer(Modifier.height(10.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.weight(1f)) { Icon(Icons.Outlined.QrCodeScanner, null); Text(stringResource(R.string.scan_coming), Modifier.padding(start = 6.dp)) }
-                OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.weight(1f)) { Icon(Icons.Outlined.Backup, null); Text(stringResource(R.string.restore_coming), Modifier.padding(start = 6.dp)) }
-            }
+            OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.QrCodeScanner, null); Text(stringResource(R.string.scan_coming), Modifier.padding(start = 8.dp), maxLines = 1) }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Backup, null); Text(stringResource(R.string.restore_coming), Modifier.padding(start = 8.dp), maxLines = 1) }
             Spacer(Modifier.height(18.dp))
             OutlinedButton(onClick = onSkip, modifier = Modifier.align(Alignment.CenterHorizontally)) { Text(stringResource(R.string.skip)) }
             Spacer(Modifier.height(12.dp))

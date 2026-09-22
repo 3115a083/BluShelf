@@ -3,6 +3,8 @@ package com.blushelf.app.ui
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
+import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -10,6 +12,11 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.blushelf.app.ColorPalette
 import com.blushelf.app.ThemeMode
 
@@ -19,6 +26,23 @@ private val IndigoLight = lightColorScheme(primary = Color(0xFF4555A5), secondar
 private val IndigoDark = darkColorScheme(primary = Color(0xFFBBC3FF), secondary = Color(0xFFC4C5DD), tertiary = Color(0xFFE7BAD7))
 private val TealLight = lightColorScheme(primary = Color(0xFF006A67), secondary = Color(0xFF4A6361), tertiary = Color(0xFF4B607C))
 private val TealDark = darkColorScheme(primary = Color(0xFF4FDAD4), secondary = Color(0xFFB1CCCA), tertiary = Color(0xFFB3C8E8))
+
+private val BluShelfTypography = Typography(
+    headlineMedium = TextStyle(fontWeight = FontWeight.Black, fontSize = 28.sp, lineHeight = 32.sp),
+    headlineSmall = TextStyle(fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 29.sp),
+    titleLarge = TextStyle(fontWeight = FontWeight.Bold, fontSize = 21.sp, lineHeight = 26.sp),
+    titleMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 16.sp, lineHeight = 22.sp),
+    bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 24.sp),
+    bodyMedium = TextStyle(fontSize = 14.sp, lineHeight = 20.sp),
+    labelLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 19.sp)
+)
+
+private val BluShelfShapes = Shapes(
+    small = RoundedCornerShape(10.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(22.dp),
+    extraLarge = RoundedCornerShape(28.dp)
+)
 
 @Composable
 fun BluShelfTheme(mode: ThemeMode, dynamic: Boolean, palette: ColorPalette, content: @Composable () -> Unit) {
@@ -30,5 +54,5 @@ fun BluShelfTheme(mode: ThemeMode, dynamic: Boolean, palette: ColorPalette, cont
         palette == ColorPalette.TEAL -> if (dark) TealDark else TealLight
         else -> if (dark) OceanDark else OceanLight
     }
-    MaterialTheme(colorScheme = colors, content = content)
+    MaterialTheme(colorScheme = colors, typography = BluShelfTypography, shapes = BluShelfShapes, content = content)
 }

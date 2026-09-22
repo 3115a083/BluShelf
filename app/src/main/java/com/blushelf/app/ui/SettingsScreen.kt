@@ -1,20 +1,24 @@
 package com.blushelf.app.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.Brush
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.ColorLens
 import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Movie
@@ -27,18 +31,22 @@ import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.Tag
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Card
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,78 +57,281 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.blushelf.app.ColorPalette
 import com.blushelf.app.R
+import com.blushelf.app.ShelfKind
 import com.blushelf.app.ShelfView
 import com.blushelf.app.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    theme: ThemeMode, dynamic: Boolean, palette: ColorPalette, defaultView: ShelfView,
-    wishlistGhosts: Boolean, batchScanning: Boolean, haptic: Boolean,
-    onTheme: (ThemeMode) -> Unit, onDynamic: (Boolean) -> Unit, onPalette: (ColorPalette) -> Unit,
-    onDefaultView: (ShelfView) -> Unit, onWishlistGhosts: (Boolean) -> Unit,
-    onBatchScanning: (Boolean) -> Unit, onHaptic: (Boolean) -> Unit,
+    theme: ThemeMode,
+    dynamic: Boolean,
+    palette: ColorPalette,
+    defaultView: ShelfView,
+    defaultShelf: ShelfKind,
+    wishlistGhosts: Boolean,
+    batchScanning: Boolean,
+    haptic: Boolean,
+    onTheme: (ThemeMode) -> Unit,
+    onDynamic: (Boolean) -> Unit,
+    onPalette: (ColorPalette) -> Unit,
+    onDefaultView: (ShelfView) -> Unit,
+    onDefaultShelf: (ShelfKind) -> Unit,
+    onWishlistGhosts: (Boolean) -> Unit,
+    onBatchScanning: (Boolean) -> Unit,
+    onHaptic: (Boolean) -> Unit,
+    onImport: () -> Unit,
+    onExport: () -> Unit,
+    onLanguage: () -> Unit,
     onMessage: (String) -> Unit
 ) {
     var query by rememberSaveable { mutableStateOf("") }
+    var detail by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var showShelves by remember { mutableStateOf(false) }
+    var showImportExport by remember { mutableStateOf(false) }
+    val uriHandler = LocalUriHandler.current
+
+    val notConfigured = stringResource(R.string.not_configured)
+    val notAvailable = stringResource(R.string.prepared_not_available)
+    val localOnly = stringResource(R.string.local_first_summary)
+    val providerInfo = stringResource(R.string.provider_setup_later)
+    val serverInfo = stringResource(R.string.server_setup_later)
+    val cacheEmpty = stringResource(R.string.cache_empty)
+    val scannerUnavailable = stringResource(R.string.scanner_not_available)
+    val syncStatus = stringResource(R.string.sync_status)
+    val webdavInfo = stringResource(R.string.webdav_setup_later)
+    val backupInfo = stringResource(R.string.backup_setup_later)
+    val scannerTitle = stringResource(R.string.scanner)
+    val noTracking = stringResource(R.string.no_tracking_summary)
+    val networkSummary = stringResource(R.string.network_on_use_summary)
+    val aboutBluShelf = stringResource(R.string.about_blushelf)
+
     fun matches(vararg text: String) = query.isBlank() || text.any { it.contains(query, true) }
-    Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.settings)) }) }) { padding ->
-        LazyColumn(Modifier.fillMaxSize().padding(padding)) {
-            item { OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth().padding(16.dp), leadingIcon = { Icon(Icons.Outlined.Search, null) }, placeholder = { Text(stringResource(R.string.search_settings)) }, singleLine = true) }
+    fun show(title: String, body: String) { detail = title to body }
+
+    Scaffold(topBar = { TopAppBar(title = { Text(stringResource(R.string.settings), fontWeight = FontWeight.Bold) }) }) { padding ->
+        androidx.compose.foundation.lazy.LazyColumn(
+            Modifier.fillMaxSize().padding(padding),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 28.dp)
+        ) {
+            item {
+                OutlinedTextField(
+                    query,
+                    { query = it },
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    leadingIcon = { Icon(Icons.Outlined.Search, null) },
+                    placeholder = { Text(stringResource(R.string.search_settings)) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(28.dp)
+                )
+            }
 
             if (matches("Darstellung", "Appearance", "Theme", "Farbe", "Sprache")) item {
                 SettingsSection(stringResource(R.string.appearance), Icons.Outlined.Brush) {
-                    Text(stringResource(R.string.theme), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp, 12.dp, 16.dp, 4.dp))
-                    ThemeMode.entries.forEach { mode -> ChoiceRow(theme == mode, stringResource(when (mode) { ThemeMode.SYSTEM -> R.string.theme_system; ThemeMode.LIGHT -> R.string.theme_light; ThemeMode.DARK -> R.string.theme_dark })) { onTheme(mode) } }
+                    SettingLabel(stringResource(R.string.theme))
+                    ThemeMode.entries.forEach { mode ->
+                        ChoiceRow(
+                            selected = theme == mode,
+                            title = stringResource(when (mode) {
+                                ThemeMode.SYSTEM -> R.string.theme_system
+                                ThemeMode.LIGHT -> R.string.theme_light
+                                ThemeMode.DARK -> R.string.theme_dark
+                            }),
+                            onClick = { onTheme(mode) }
+                        )
+                    }
+                    HorizontalDivider()
                     SwitchRow(stringResource(R.string.dynamic_color), stringResource(R.string.dynamic_color_summary), dynamic, onDynamic, Icons.Outlined.ColorLens)
-                    Text(stringResource(R.string.color_palette), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp, 12.dp, 16.dp, 6.dp))
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { ColorPalette.entries.forEach { value -> AssistChip({ onPalette(value) }, { Text(value.name.lowercase().replaceFirstChar(Char::uppercase)) }, leadingIcon = { Icon(Icons.Outlined.ColorLens, null, tint = paletteColor(value)) }) } }
-                    StatusRow(stringResource(R.string.language), stringResource(R.string.system_language_hint), Icons.Outlined.Language)
-                    Text(stringResource(R.string.default_shelf_view), style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(16.dp, 12.dp, 16.dp, 4.dp))
-                    ShelfView.entries.forEach { value -> ChoiceRow(defaultView == value, stringResource(when (value) { ShelfView.VIRTUAL -> R.string.virtual_shelf; ShelfView.LIST -> R.string.list; ShelfView.DETAILED -> R.string.detailed })) { onDefaultView(value) } }
+                    SettingLabel(stringResource(R.string.color_palette))
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ColorPalette.entries.forEach { value ->
+                            FilterChip(
+                                selected = palette == value,
+                                onClick = { onPalette(value) },
+                                enabled = !dynamic,
+                                label = { Text(value.name.lowercase().replaceFirstChar(Char::uppercase), maxLines = 1) },
+                                leadingIcon = { Icon(Icons.Outlined.ColorLens, null, tint = paletteColor(value)) }
+                            )
+                        }
+                    }
+                    SettingsRow(stringResource(R.string.language), stringResource(R.string.system_language_hint), Icons.Outlined.Language, onLanguage)
+                    SettingLabel(stringResource(R.string.default_shelf_view))
+                    ShelfView.entries.forEach { value ->
+                        ChoiceRow(
+                            selected = defaultView == value,
+                            title = stringResource(when (value) {
+                                ShelfView.VIRTUAL -> R.string.virtual_shelf
+                                ShelfView.LIST -> R.string.list
+                                ShelfView.DETAILED -> R.string.detailed
+                            }),
+                            onClick = { onDefaultView(value) }
+                        )
+                    }
                 }
             }
 
             if (matches("Sammlung", "Shelves", "Custom", "Standorte", "Tags", "Wishlist")) item {
+                val custom = stringResource(R.string.custom_fields)
+                val locations = stringResource(R.string.locations)
+                val tags = stringResource(R.string.tags_collections)
                 SettingsSection(stringResource(R.string.collection), Icons.Outlined.Storage) {
-                    StatusRow(stringResource(R.string.manage_shelves), stringResource(R.string.video_audio_shelves), Icons.Outlined.Storage)
-                    StatusRow(stringResource(R.string.custom_fields), stringResource(R.string.prepared_not_available), Icons.Outlined.Tune)
-                    StatusRow(stringResource(R.string.locations), stringResource(R.string.prepared_not_available), Icons.Outlined.Folder)
-                    StatusRow(stringResource(R.string.tags_collections), stringResource(R.string.prepared_not_available), Icons.Outlined.Tag)
+                    SettingsRow(stringResource(R.string.manage_shelves), stringResource(R.string.video_audio_shelves), Icons.Outlined.Storage) { showShelves = true }
+                    SettingsRow(custom, notAvailable, Icons.Outlined.Tune) { show(custom, notAvailable) }
+                    SettingsRow(locations, notAvailable, Icons.Outlined.Folder) { show(locations, notAvailable) }
+                    SettingsRow(tags, notAvailable, Icons.Outlined.Tag) { show(tags, notAvailable) }
                     SwitchRow(stringResource(R.string.wishlist_ghosts), stringResource(R.string.wishlist_ghosts_summary), wishlistGhosts, onWishlistGhosts, Icons.Outlined.Visibility)
                 }
             }
 
-            if (matches("Metadaten", "TMDB", "MusicBrainz")) item { SettingsSection(stringResource(R.string.metadata), Icons.Outlined.Movie) { StatusRow("TMDB", stringResource(R.string.not_configured), Icons.Outlined.CloudOff); StatusRow("MusicBrainz / Cover Art Archive", stringResource(R.string.not_configured), Icons.Outlined.CloudOff) } }
-            if (matches("Server", "Plex", "Jellyfin", "Navidrome")) item { SettingsSection(stringResource(R.string.digital_servers), Icons.Outlined.Storage) { StatusRow("Plex", stringResource(R.string.not_configured), Icons.Outlined.CloudOff); StatusRow("Jellyfin", stringResource(R.string.not_configured), Icons.Outlined.CloudOff); StatusRow("Navidrome / OpenSubsonic", stringResource(R.string.not_configured), Icons.Outlined.CloudOff) } }
-            if (matches("Sync", "WebDAV", "Backup", "Import", "Export")) item { SettingsSection(stringResource(R.string.sync_backup), Icons.Outlined.Sync) { StatusRow(stringResource(R.string.sync_status), stringResource(R.string.local_only), Icons.Outlined.CloudOff); StatusRow("WebDAV", stringResource(R.string.not_configured), Icons.Outlined.Sync); StatusRow(stringResource(R.string.backup), stringResource(R.string.not_available_yet), Icons.Outlined.Backup); StatusRow(stringResource(R.string.import_export), stringResource(R.string.csv_import_available), Icons.Outlined.Storage) } }
-            if (matches("Scanner", "Batch", "Haptik")) item { SettingsSection(stringResource(R.string.scanner), Icons.Outlined.QrCodeScanner) { SwitchRow(stringResource(R.string.batch_scanning), stringResource(R.string.scanner_not_available), batchScanning, onBatchScanning, Icons.Outlined.QrCodeScanner); SwitchRow(stringResource(R.string.haptic_confirmation), stringResource(R.string.applies_when_scanner_available), haptic, onHaptic, Icons.Outlined.Settings) } }
-            if (matches("Datenschutz", "Sicherheit", "Telemetrie", "Werbung", "Cache")) item { SettingsSection(stringResource(R.string.privacy_security), Icons.Outlined.Security) { StatusRow(stringResource(R.string.local_first), stringResource(R.string.local_first_summary), Icons.Outlined.Lock); StatusRow(stringResource(R.string.no_telemetry_ads), stringResource(R.string.no_tracking_summary), Icons.Outlined.Security); StatusRow(stringResource(R.string.network_on_use), stringResource(R.string.network_on_use_summary), Icons.Outlined.CloudOff); ListItem({ Text(stringResource(R.string.clear_cache)) }, Modifier.clickable { onMessage("Kein heruntergeladener Artwork-Cache vorhanden") }, supportingContent = { Text(stringResource(R.string.local_action)) }, leadingContent = { Icon(Icons.Outlined.Storage, null) }) } }
-            if (matches("Über", "About", "Version", "Open Source")) item { SettingsSection(stringResource(R.string.about), Icons.Outlined.Code) { StatusRow("BluShelf", "Version 0.2.0 · Debug", Icons.Outlined.Code); StatusRow(stringResource(R.string.open_source_project), "github.com/3115a083/BluShelf", Icons.Outlined.Code) } }
+            if (matches("Metadaten", "TMDB", "MusicBrainz")) item {
+                SettingsSection(stringResource(R.string.metadata), Icons.Outlined.Movie) {
+                    SettingsRow("TMDB", notConfigured, Icons.Outlined.CloudOff) { show("TMDB", providerInfo) }
+                    SettingsRow("MusicBrainz / Cover Art Archive", notConfigured, Icons.Outlined.CloudOff) { show("MusicBrainz / Cover Art Archive", providerInfo) }
+                }
+            }
+            if (matches("Server", "Plex", "Jellyfin", "Navidrome")) item {
+                SettingsSection(stringResource(R.string.digital_servers), Icons.Outlined.Storage) {
+                    listOf("Plex", "Jellyfin", "Navidrome / OpenSubsonic").forEach { server ->
+                        SettingsRow(server, notConfigured, Icons.Outlined.CloudOff) { show(server, serverInfo) }
+                    }
+                }
+            }
+            if (matches("Sync", "WebDAV", "Backup", "Import", "Export")) item {
+                val webdav = "WebDAV"
+                val backup = stringResource(R.string.backup)
+                SettingsSection(stringResource(R.string.sync_backup), Icons.Outlined.Sync) {
+                    SettingsRow(syncStatus, stringResource(R.string.local_only), Icons.Outlined.CloudOff) { show(syncStatus, localOnly) }
+                    SettingsRow(webdav, notConfigured, Icons.Outlined.Sync) { show(webdav, webdavInfo) }
+                    SettingsRow(backup, stringResource(R.string.not_available_yet), Icons.Outlined.Backup) { show(backup, backupInfo) }
+                    SettingsRow(stringResource(R.string.import_export), stringResource(R.string.csv_import_export_available), Icons.Outlined.Storage) { showImportExport = true }
+                }
+            }
+            if (matches("Scanner", "Batch", "Haptik")) item {
+                SettingsSection(stringResource(R.string.scanner), Icons.Outlined.QrCodeScanner) {
+                    SettingsRow(stringResource(R.string.scanner_status), scannerUnavailable, Icons.Outlined.Info) { show(scannerTitle, scannerUnavailable) }
+                    SwitchRow(stringResource(R.string.batch_scanning), stringResource(R.string.batch_scanning_summary), batchScanning, onBatchScanning, Icons.Outlined.QrCodeScanner)
+                    SwitchRow(stringResource(R.string.haptic_confirmation), stringResource(R.string.applies_when_scanner_available), haptic, onHaptic, Icons.Outlined.Settings)
+                }
+            }
+            if (matches("Datenschutz", "Sicherheit", "Telemetrie", "Werbung", "Cache")) item {
+                val privacy = stringResource(R.string.local_first)
+                val telemetry = stringResource(R.string.no_telemetry_ads)
+                val network = stringResource(R.string.network_on_use)
+                SettingsSection(stringResource(R.string.privacy_security), Icons.Outlined.Security) {
+                    SettingsRow(privacy, stringResource(R.string.local_first_summary), Icons.Outlined.Lock) { show(privacy, localOnly) }
+                    SettingsRow(telemetry, noTracking, Icons.Outlined.Security) { show(telemetry, noTracking) }
+                    SettingsRow(network, networkSummary, Icons.Outlined.CloudOff) { show(network, networkSummary) }
+                    SettingsRow(stringResource(R.string.clear_cache), stringResource(R.string.local_action), Icons.Outlined.Storage) { onMessage(cacheEmpty) }
+                }
+            }
+            if (matches("Über", "About", "Version", "Open Source")) item {
+                SettingsSection(stringResource(R.string.about), Icons.Outlined.Code) {
+                    SettingsRow("BluShelf", "Version 0.3.0 · Debug", Icons.Outlined.Info) { show("BluShelf", aboutBluShelf) }
+                    SettingsRow(stringResource(R.string.open_source_project), "github.com/3115a083/BluShelf", Icons.Outlined.Code) {
+                        uriHandler.openUri("https://github.com/3115a083/BluShelf")
+                    }
+                }
+            }
         }
+    }
+
+    detail?.let { value ->
+        AlertDialog(
+            onDismissRequest = { detail = null },
+            icon = { Icon(Icons.Outlined.Info, null) },
+            title = { Text(value.first) },
+            text = { Text(value.second) },
+            confirmButton = { TextButton({ detail = null }) { Text(stringResource(R.string.close)) } }
+        )
+    }
+    if (showShelves) {
+        AlertDialog(
+            onDismissRequest = { showShelves = false },
+            title = { Text(stringResource(R.string.manage_shelves)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.default_shelf), style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(bottom = 8.dp))
+                    ChoiceRow(defaultShelf == ShelfKind.VIDEO, stringResource(R.string.video_shelf)) { onDefaultShelf(ShelfKind.VIDEO) }
+                    ChoiceRow(defaultShelf == ShelfKind.AUDIO, stringResource(R.string.audio_shelf)) { onDefaultShelf(ShelfKind.AUDIO) }
+                }
+            },
+            confirmButton = { TextButton({ showShelves = false }) { Text(stringResource(R.string.done)) } }
+        )
+    }
+    if (showImportExport) {
+        AlertDialog(
+            onDismissRequest = { showImportExport = false },
+            title = { Text(stringResource(R.string.import_export)) },
+            text = { Text(stringResource(R.string.import_export_explanation)) },
+            confirmButton = {
+                Button({ showImportExport = false; onImport() }) { Text(stringResource(R.string.import_csv), maxLines = 1) }
+            },
+            dismissButton = {
+                OutlinedButton({ showImportExport = false; onExport() }) { Text(stringResource(R.string.export_csv), maxLines = 1) }
+            }
+        )
     }
 }
 
 @Composable
 private fun SettingsSection(title: String, icon: ImageVector, content: @Composable () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 7.dp)) {
-        Row(Modifier.padding(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) { Icon(icon, null, tint = MaterialTheme.colorScheme.primary); Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
-        Card(Modifier.fillMaxWidth()) { content() }
+    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
+        Row(Modifier.padding(horizontal = 8.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
+            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }
+        ElevatedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(22.dp)) { content() }
     }
 }
 
 @Composable
-private fun ChoiceRow(selected: Boolean, title: String, onClick: () -> Unit) { ListItem({ Text(title) }, Modifier.clickable(onClick = onClick), leadingContent = { RadioButton(selected, onClick) }) }
+private fun SettingLabel(title: String) {
+    Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp), maxLines = 1)
+}
 
 @Composable
-private fun SwitchRow(title: String, summary: String, checked: Boolean, onChecked: (Boolean) -> Unit, icon: ImageVector) { ListItem({ Text(title) }, Modifier.clickable { onChecked(!checked) }, supportingContent = { Text(summary) }, leadingContent = { Icon(icon, null) }, trailingContent = { Switch(checked, onCheckedChange = onChecked) }) }
+private fun ChoiceRow(selected: Boolean, title: String, onClick: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        modifier = Modifier.clickable(onClick = onClick),
+        leadingContent = { RadioButton(selected, onClick) }
+    )
+}
 
 @Composable
-private fun StatusRow(title: String, summary: String, icon: ImageVector) { ListItem({ Text(title) }, supportingContent = { Text(summary) }, leadingContent = { Icon(icon, null) }) }
+private fun SwitchRow(title: String, summary: String, checked: Boolean, onChecked: (Boolean) -> Unit, icon: ImageVector) {
+    ListItem(
+        headlineContent = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        modifier = Modifier.clickable { onChecked(!checked) },
+        supportingContent = { Text(summary, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+        leadingContent = { Icon(icon, null) },
+        trailingContent = { Switch(checked, onCheckedChange = onChecked) }
+    )
+}
 
-private fun paletteColor(value: ColorPalette) = when (value) { ColorPalette.OCEAN -> Color(0xFF00639A); ColorPalette.INDIGO -> Color(0xFF4555A5); ColorPalette.TEAL -> Color(0xFF006A67) }
+@Composable
+private fun SettingsRow(title: String, summary: String, icon: ImageVector, onClick: () -> Unit) {
+    ListItem(
+        headlineContent = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        modifier = Modifier.clickable(onClick = onClick),
+        supportingContent = { Text(summary, maxLines = 2, overflow = TextOverflow.Ellipsis) },
+        leadingContent = { Icon(icon, null) },
+        trailingContent = { Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.outline) }
+    )
+}
+
+private fun paletteColor(value: ColorPalette) = when (value) {
+    ColorPalette.OCEAN -> Color(0xFF00639A)
+    ColorPalette.INDIGO -> Color(0xFF4555A5)
+    ColorPalette.TEAL -> Color(0xFF006A67)
+}
