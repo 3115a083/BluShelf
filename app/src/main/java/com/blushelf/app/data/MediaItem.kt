@@ -16,5 +16,6 @@ data class MediaItem(
     val rating: Float? = null,
     val favorite: Boolean = false,
     val played: Boolean = false,
+    val inWatchlist: Boolean = false,
     val notes: String = ""
 )

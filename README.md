@@ -22,7 +22,19 @@ BluShelf is a local-first Android app for organizing physical video and audio me
 
 ## Status
 
-BluShelf is under active development. The Android application is built with Kotlin and Jetpack Compose. The current early test version supports a local CSV import and a basic media list. Features listed above describe the product direction and are not all implemented yet.
+BluShelf is under active development. The Android application is built with Kotlin, Jetpack Compose, Material 3 and Room. The current test version includes:
+
+- A persistent Video and Audio collection
+- A virtual shelf with format-specific readable spines, quick navigation and media quick view
+- Simple and detailed list views
+- Local search, title/year/rating sorting and manual media entry
+- UTF-8 CSV import through the Android system file picker
+- A Swipe prototype with skip, temporary session shortlist, pick and undo
+- Light, dark, system and dynamic-color appearance settings
+- Searchable settings structure for planned providers, servers, backup and scanner features
+- A short, skippable first-run introduction
+
+Items marked as not configured or not available in the app are planned features rather than simulated integrations.
 
 ## Build
 

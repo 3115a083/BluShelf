@@ -5,39 +5,19 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.AudioFile
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Swipe
-import androidx.compose.material.icons.outlined.UploadFile
 import androidx.compose.material.icons.outlined.VideoLibrary
-import androidx.compose.material.icons.outlined.VideoFile
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,16 +25,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.blushelf.app.data.CsvImporter
-import com.blushelf.app.data.MediaItem
-import com.blushelf.app.data.MediaKind
-import com.blushelf.app.data.MediaRepository
+import com.blushelf.app.ui.BluShelfTheme
+import com.blushelf.app.ui.OnboardingScreen
+import com.blushelf.app.ui.SettingsScreen
+import com.blushelf.app.ui.ShelfScreen
+import com.blushelf.app.ui.SwipeScreen
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
@@ -64,78 +43,81 @@ private const val MAX_IMPORT_BYTES = 10L * 1024L * 1024L
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { BluShelfApp() }
+        enableEdgeToEdge()
+        setContent { BluShelfRoot() }
     }
 }
 
-class ShelfViewModel : ViewModel() {
-    private val repository = MediaRepository()
-    val items: List<MediaItem> get() = repository.items
+private enum class Destination { SHELF, SWIPE, SETTINGS }
 
-    fun importCsv(text: String): Result<Int> = CsvImporter.parse(text).map { imported ->
-        repository.replaceAll(imported)
-        imported.size
-    }
-}
-
-private enum class Destination { Shelf, Swipe, Settings }
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun BluShelfApp(shelfViewModel: ShelfViewModel = viewModel()) {
-    var destination by rememberSaveable { mutableStateOf(Destination.Shelf) }
-    var message by remember { mutableStateOf<String?>(null) }
-    val snackbarHostState = remember { SnackbarHostState() }
-    val importSuccess = stringResource(R.string.import_success)
-    val importFailure = stringResource(R.string.import_failure)
-    val readFailure = stringResource(R.string.file_read_failure)
-    val fileTooLarge = stringResource(R.string.file_too_large)
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if (uri != null) {
-            message = runCatching {
-                val size = context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
-                require(size == null || size < 0 || size <= MAX_IMPORT_BYTES) { fileTooLarge }
-                val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
-                    input.readLimitedBytes(MAX_IMPORT_BYTES, fileTooLarge)
-                } ?: throw IOException(readFailure)
-                require(bytes.size <= MAX_IMPORT_BYTES) { fileTooLarge }
-                bytes.toString(Charsets.UTF_8)
-            }.fold(
-                onSuccess = { csv ->
-                    shelfViewModel.importCsv(csv).fold(
-                        onSuccess = { count -> importSuccess.format(count) },
-                        onFailure = { error -> "$importFailure: ${error.message ?: importFailure}" }
-                    )
-                },
-                onFailure = { error -> error.message ?: readFailure }
+private fun BluShelfRoot(app: BluShelfViewModel = viewModel()) {
+    BluShelfTheme(app.themeMode, app.dynamicColor, app.palette) {
+        val items by app.items.collectAsStateWithLifecycle()
+        val context = LocalContext.current
+        var destination by rememberSaveable { mutableStateOf(Destination.SHELF) }
+        var message by remember { mutableStateOf<String?>(null) }
+        var finishOnImport by remember { mutableStateOf(false) }
+        val snackbar = remember { SnackbarHostState() }
+        val importSuccess = stringResource(R.string.import_success)
+        val importFailure = stringResource(R.string.import_failure)
+        val readFailure = stringResource(R.string.file_read_failure)
+        val fileTooLarge = stringResource(R.string.file_too_large)
+
+        val importer = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+            if (uri != null) {
+                runCatching {
+                    val size = context.contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
+                    require(size == null || size < 0 || size <= MAX_IMPORT_BYTES) { fileTooLarge }
+                    context.contentResolver.openInputStream(uri)?.use { it.readLimitedBytes(MAX_IMPORT_BYTES, fileTooLarge) }
+                        ?.toString(Charsets.UTF_8) ?: throw IOException(readFailure)
+                }.fold(
+                    onSuccess = { csv -> app.importCsv(csv) { result -> result.fold(
+                        onSuccess = { count -> message = importSuccess.format(count); if (finishOnImport) app.finishOnboarding(); finishOnImport = false },
+                        onFailure = { error -> message = "$importFailure: ${error.message ?: importFailure}"; finishOnImport = false }
+                    ) } },
+                    onFailure = { error -> message = error.message ?: readFailure; finishOnImport = false }
+                )
+            } else finishOnImport = false
+        }
+
+        LaunchedEffect(message) { message?.let { snackbar.showSnackbar(it); message = null } }
+
+        if (!app.onboardingComplete) {
+            OnboardingScreen(
+                onCreate = app::finishOnboarding,
+                onImport = { finishOnImport = true; importer.launch(arrayOf("text/csv", "text/comma-separated-values", "text/plain")) },
+                onSkip = app::finishOnboarding
             )
-        }
-    }
-
-    LaunchedEffect(message) {
-        message?.let {
-            snackbarHostState.showSnackbar(it)
-            message = null
-        }
-    }
-
-    MaterialTheme {
-        Scaffold(
-            topBar = { TopAppBar(title = { Text(stringResource(R.string.app_name)) }) },
-            snackbarHost = { SnackbarHost(snackbarHostState) },
-            bottomBar = {
-                NavigationBar {
-                    NavigationBarItem(destination == Destination.Shelf, { destination = Destination.Shelf }, { Icon(Icons.Outlined.VideoLibrary, null) }, label = { Text(stringResource(R.string.shelf)) })
-                    NavigationBarItem(destination == Destination.Swipe, { destination = Destination.Swipe }, { Icon(Icons.Outlined.Swipe, null) }, label = { Text(stringResource(R.string.swipe)) })
-                    NavigationBarItem(destination == Destination.Settings, { destination = Destination.Settings }, { Icon(Icons.Outlined.Settings, null) }, label = { Text(stringResource(R.string.settings)) })
+        } else {
+            Scaffold(
+                snackbarHost = { SnackbarHost(snackbar) },
+                bottomBar = {
+                    NavigationBar {
+                        NavigationBarItem(destination == Destination.SHELF, { destination = Destination.SHELF }, { Icon(Icons.Outlined.VideoLibrary, null) }, label = { Text(stringResource(R.string.shelf)) })
+                        NavigationBarItem(destination == Destination.SWIPE, { destination = Destination.SWIPE }, { Icon(Icons.Outlined.Swipe, null) }, label = { Text(stringResource(R.string.swipe)) })
+                        NavigationBarItem(destination == Destination.SETTINGS, { destination = Destination.SETTINGS }, { Icon(Icons.Outlined.Settings, null) }, label = { Text(stringResource(R.string.settings)) })
+                    }
                 }
-            }
-        ) { padding ->
-            when (destination) {
-                Destination.Shelf -> ShelfScreen(shelfViewModel.items, { launcher.launch(arrayOf("text/csv", "text/comma-separated-values", "text/plain")) }, Modifier.padding(padding))
-                Destination.Swipe -> PlaceholderScreen(stringResource(R.string.swipe_not_implemented), Modifier.padding(padding))
-                Destination.Settings -> PlaceholderScreen(stringResource(R.string.settings_not_implemented), Modifier.padding(padding))
+            ) { outerPadding ->
+                androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.padding(bottom = outerPadding.calculateBottomPadding())) {
+                    when (destination) {
+                        Destination.SHELF -> ShelfScreen(
+                            allItems = items, shelfKind = app.shelfKind, view = app.shelfView,
+                            onShelfKind = app::setShelfKind, onView = app::setShelfView,
+                            onImport = { importer.launch(arrayOf("text/csv", "text/comma-separated-values", "text/plain")) },
+                            onUnavailable = { message = it }, onAdd = app::addManual,
+                            onFavorite = app::toggleFavorite, onPlayed = app::togglePlayed, onWatchlist = app::toggleWatchlist
+                        )
+                        Destination.SWIPE -> SwipeScreen(items, app.shelfKind) { destination = Destination.SHELF }
+                        Destination.SETTINGS -> SettingsScreen(
+                            app.themeMode, app.dynamicColor, app.palette, app.shelfView, app.showWishlistGhosts,
+                            app.batchScanning, app.hapticConfirmation, app::setTheme, app::setDynamicColor,
+                            app::setPalette, app::setShelfView, app::setWishlistGhosts, app::setBatchScanning,
+                            app::setHapticConfirmation
+                        ) { message = it }
+                    }
+                }
             }
         }
     }
@@ -153,55 +135,4 @@ private fun InputStream.readLimitedBytes(limit: Long, limitMessage: String): Byt
         output.write(buffer, 0, count)
     }
     return output.toByteArray()
-}
-
-@Composable
-private fun ShelfScreen(items: List<MediaItem>, onImport: () -> Unit, modifier: Modifier = Modifier) {
-    Column(modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.End) {
-            Button(onClick = onImport) {
-                Icon(Icons.Outlined.UploadFile, contentDescription = null)
-                Spacer(Modifier.padding(horizontal = 4.dp))
-                Text(stringResource(R.string.import_csv))
-            }
-        }
-        if (items.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(stringResource(R.string.empty_shelf), style = MaterialTheme.typography.headlineSmall)
-                    Spacer(Modifier.height(8.dp))
-                    Text(stringResource(R.string.empty_shelf_hint), style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-        } else {
-            Text(stringResource(R.string.media_count, items.size), Modifier.padding(horizontal = 16.dp, vertical = 4.dp), style = MaterialTheme.typography.titleMedium)
-            LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(items, key = { it.id }) { MediaRow(it) }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MediaRow(item: MediaItem) {
-    Card(Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.Top) {
-            Icon(if (item.kind == MediaKind.VIDEO) Icons.Outlined.VideoFile else Icons.Outlined.AudioFile, contentDescription = stringResource(if (item.kind == MediaKind.VIDEO) R.string.video else R.string.audio))
-            Column(Modifier.padding(start = 12.dp).weight(1f)) {
-                Text(item.title, style = MaterialTheme.typography.titleMedium)
-                Text(listOfNotNull(item.year?.toString(), item.format.takeIf(String::isNotBlank)).joinToString(" • "), style = MaterialTheme.typography.bodyMedium)
-                if (item.location.isNotBlank()) Text(stringResource(R.string.location_value, item.location), style = MaterialTheme.typography.bodySmall)
-                item.rating?.let { Text(stringResource(R.string.rating_value, it), style = MaterialTheme.typography.bodySmall) }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PlaceholderScreen(text: String, modifier: Modifier = Modifier) {
-    Surface(modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
-            Text(text, style = MaterialTheme.typography.titleMedium)
-        }
-    }
 }
