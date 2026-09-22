@@ -11,7 +11,6 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -33,6 +32,8 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AudioFile
@@ -41,11 +42,9 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.GridView
-import androidx.compose.material.icons.outlined.List
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Sort
 import androidx.compose.material.icons.outlined.UploadFile
 import androidx.compose.material.icons.outlined.VideoFile
 import androidx.compose.material.icons.outlined.ViewAgenda
@@ -150,7 +149,7 @@ fun ShelfScreen(
             },
             actions = {
                 IconButton({ searchVisible = !searchVisible }) { Icon(if (searchVisible) Icons.Outlined.Close else Icons.Outlined.Search, stringResource(R.string.search)) }
-                Box { IconButton({ sortMenu = true }) { Icon(Icons.Outlined.Sort, stringResource(R.string.sort_filter)) }; DropdownMenu(sortMenu, { sortMenu = false }) {
+                Box { IconButton({ sortMenu = true }) { Icon(Icons.AutoMirrored.Outlined.Sort, stringResource(R.string.sort_filter)) }; DropdownMenu(sortMenu, { sortMenu = false }) {
                     DropdownMenuItem({ Text(stringResource(R.string.sort_title)) }, { sort = SortMode.TITLE; sortMenu = false })
                     DropdownMenuItem({ Text(stringResource(R.string.sort_year)) }, { sort = SortMode.YEAR; sortMenu = false })
                     DropdownMenuItem({ Text(stringResource(R.string.sort_rating)) }, { sort = SortMode.RATING; sortMenu = false })
@@ -184,7 +183,7 @@ fun ShelfScreen(
 private fun ViewSwitcher(view: ShelfView, onView: (ShelfView) -> Unit) {
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         FilterChip(view == ShelfView.VIRTUAL, { onView(ShelfView.VIRTUAL) }, { Text(stringResource(R.string.virtual_shelf), maxLines = 1) }, leadingIcon = { Icon(Icons.Outlined.GridView, null) })
-        FilterChip(view == ShelfView.LIST, { onView(ShelfView.LIST) }, { Text(stringResource(R.string.list), maxLines = 1) }, leadingIcon = { Icon(Icons.Outlined.List, null) })
+        FilterChip(view == ShelfView.LIST, { onView(ShelfView.LIST) }, { Text(stringResource(R.string.list), maxLines = 1) }, leadingIcon = { Icon(Icons.AutoMirrored.Outlined.List, null) })
         FilterChip(view == ShelfView.DETAILED, { onView(ShelfView.DETAILED) }, { Text(stringResource(R.string.detailed), maxLines = 1) }, leadingIcon = { Icon(Icons.Outlined.ViewAgenda, null) })
     }
 }
@@ -254,7 +253,7 @@ private fun VirtualShelf(items: List<MediaItem>, selected: MediaItem?, onSelect:
 private fun AlphabetScrubber(current: String, items: List<MediaItem>, onLetter: (Char) -> Unit) {
     val letters = ('A'..'Z').toList()
     val enabled = remember(items) { letters.associateWith { letter -> items.any { titleSortKey(it.title).startsWith(letter, true) } } }
-    BoxWithConstraints(
+    Box(
         Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 10.dp, vertical = 6.dp)
             .clip(RoundedCornerShape(22.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)

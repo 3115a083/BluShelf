@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Undo
 import androidx.compose.material.icons.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Bookmarks
@@ -29,7 +30,6 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Shuffle
-import androidx.compose.material.icons.outlined.Undo
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -374,7 +374,7 @@ private fun SwipeControls(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.Top
     ) {
-        SwipeControl(stringResource(R.string.undo), Icons.Outlined.Undo, canUndo, onUndo, small = true)
+        SwipeControl(stringResource(R.string.undo), Icons.AutoMirrored.Outlined.Undo, canUndo, onUndo, small = true)
         SwipeControl(stringResource(R.string.skip_media), Icons.Outlined.Close, true, onSkip)
         SwipeControl(stringResource(R.string.pick), Icons.Outlined.ArrowUpward, true, onPick, primary = true)
         SwipeControl(stringResource(R.string.shortlist), Icons.Outlined.Bookmarks, true, onShortlist)
