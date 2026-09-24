@@ -1,5 +1,8 @@
 package com.blushelf.app.ui
 
+import android.graphics.Paint
+import android.graphics.Typeface
+
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -26,6 +29,9 @@ import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -48,6 +54,7 @@ import androidx.compose.material.icons.outlined.UploadFile
 import androidx.compose.material.icons.outlined.VideoFile
 import androidx.compose.material.icons.outlined.WatchLater
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -67,6 +74,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -84,7 +92,6 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.input.pointer.pointerInput
@@ -101,6 +108,7 @@ import com.blushelf.app.ShelfKind
 import com.blushelf.app.ShelfView
 import com.blushelf.app.data.MediaItem
 import com.blushelf.app.data.MediaKind
+import com.blushelf.app.data.ShelfEntity
 import com.blushelf.app.data.titleSortKey
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -111,15 +119,17 @@ private enum class FilterMode { ALL, FAVORITES, UNPLAYED, WATCHLIST }
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShelfScreen(
-    allItems: List<MediaItem>, shelfKind: ShelfKind, view: ShelfView,
-    onShelfKind: (ShelfKind) -> Unit, onView: (ShelfView) -> Unit,
+    allItems: List<MediaItem>, shelves: List<ShelfEntity>, selectedShelfId: String,
+    shelfKind: ShelfKind, view: ShelfView,
+    onSelectShelf: (ShelfEntity) -> Unit, onCreateShelf: (String, MediaKind) -> Unit,
+    onView: (ShelfView) -> Unit,
     onImport: () -> Unit, onUnavailable: (String) -> Unit,
-    onAdd: (String, MediaKind, String, Int?) -> Unit,
+    onAdd: (String, MediaKind, String, Int?, String) -> Unit,
+    onUpdate: (MediaItem) -> Unit, onDelete: (MediaItem) -> Unit,
     onFavorite: (MediaItem) -> Unit, onPlayed: (MediaItem) -> Unit, onWatchlist: (MediaItem) -> Unit
 ) {
     val scannerUnavailable = stringResource(R.string.scanner_not_available)
     val metadataUnavailable = stringResource(R.string.metadata_not_configured)
-    val detailsComing = stringResource(R.string.details_coming)
     var query by rememberSaveable { mutableStateOf("") }
     var searchVisible by rememberSaveable { mutableStateOf(false) }
     var shelfMenu by remember { mutableStateOf(false) }
@@ -129,8 +139,12 @@ fun ShelfScreen(
     var filter by rememberSaveable { mutableStateOf(FilterMode.ALL) }
     var selected by remember { mutableStateOf<MediaItem?>(null) }
     var showManual by remember { mutableStateOf(false) }
-    val kind = if (shelfKind == ShelfKind.VIDEO) MediaKind.VIDEO else MediaKind.AUDIO
-    val shelfItems = allItems.filter { it.kind == kind }
+    var showCreateShelf by remember { mutableStateOf(false) }
+    var editingDetails by remember { mutableStateOf<MediaItem?>(null) }
+    val selectedShelf = shelves.firstOrNull { it.id == selectedShelfId }
+    val kind = selectedShelf?.kind?.let { runCatching { MediaKind.valueOf(it) }.getOrNull() }
+        ?: if (shelfKind == ShelfKind.VIDEO) MediaKind.VIDEO else MediaKind.AUDIO
+    val shelfItems = if (shelves.isEmpty()) allItems.filter { it.kind == kind } else allItems.filter { it.shelfId == selectedShelfId }
     val visible = shelfItems.filter {
         it.title.contains(query, true) && when (filter) {
             FilterMode.ALL -> true
@@ -150,10 +164,13 @@ fun ShelfScreen(
         TopAppBar(
             title = {
                 Box {
-                    TextButton(onClick = { shelfMenu = true }) { Text(if (shelfKind == ShelfKind.VIDEO) stringResource(R.string.video_shelf) else stringResource(R.string.audio_shelf), style = MaterialTheme.typography.titleLarge) }
+                    TextButton(onClick = { shelfMenu = true }) { Text(selectedShelf?.name ?: if (shelfKind == ShelfKind.VIDEO) stringResource(R.string.video_shelf) else stringResource(R.string.audio_shelf), style = MaterialTheme.typography.titleLarge, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                     DropdownMenu(shelfMenu, { shelfMenu = false }) {
-                        DropdownMenuItem({ Text(stringResource(R.string.video_shelf)) }, { onShelfKind(ShelfKind.VIDEO); shelfMenu = false })
-                        DropdownMenuItem({ Text(stringResource(R.string.audio_shelf)) }, { onShelfKind(ShelfKind.AUDIO); shelfMenu = false })
+                        shelves.forEach { shelf ->
+                            DropdownMenuItem({ Text(shelf.name) }, { onSelectShelf(shelf); shelfMenu = false })
+                        }
+                        HorizontalDivider()
+                        DropdownMenuItem({ Icon(Icons.Outlined.Add, null); Text(stringResource(R.string.new_shelf)) }, { shelfMenu = false; showCreateShelf = true })
                     }
                 }
             },
@@ -181,14 +198,24 @@ fun ShelfScreen(
                 FilteredEmpty { query = ""; filter = FilterMode.ALL }
             } else if (visible.isEmpty()) EmptyShelf(onImport, { showManual = true }, onUnavailable)
             else when (view) {
-                ShelfView.VIRTUAL -> VirtualShelf(visible, selected, sort == SortMode.TITLE, { selected = it })
+                    ShelfView.VIRTUAL -> VirtualShelf(visible, selected, sort == SortMode.TITLE, { selected = it })
                 ShelfView.LIST -> SimpleList(visible) { selected = it }
                 ShelfView.DETAILED -> DetailedList(visible) { selected = it }
             }
         }
     }
-    selected?.let { item -> QuickView(item, { selected = null }, { onFavorite(item) }, { onPlayed(item) }, { onWatchlist(item) }, { onUnavailable(detailsComing) }) }
-    if (showManual) ManualAddDialog(kind, { showManual = false }, { title, format, year -> onAdd(title, kind, format, year); showManual = false })
+    selected?.let { item -> QuickView(item, { selected = null }, { onFavorite(item) }, { onPlayed(item) }, { onWatchlist(item) }, { editingDetails = item; selected = null }) }
+    if (showManual) ManualAddDialog(kind, { showManual = false }, { title, format, year -> onAdd(title, kind, format, year, selectedShelfId); showManual = false })
+    if (showCreateShelf) CreateShelfDialog(kind, { showCreateShelf = false }) { name, newKind -> onCreateShelf(name, newKind); showCreateShelf = false }
+    editingDetails?.let { item ->
+        MediaDetailsSheet(
+            item = item,
+            shelves = shelves.filter { it.kind == item.kind.name },
+            onDismiss = { editingDetails = null },
+            onSave = { updated -> onUpdate(updated); editingDetails = null },
+            onDelete = { onDelete(item); editingDetails = null }
+        )
+    }
     if (controlsOpen) {
         ShelfControlsSheet(
             sort = sort,
@@ -320,13 +347,13 @@ private fun VirtualShelf(items: List<MediaItem>, selected: MediaItem?, alphabetN
                 LazyRow(
                     state = listState,
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 10.dp),
+                contentPadding = PaddingValues(horizontal = 4.dp),
                     verticalAlignment = Alignment.Bottom
                 ) {
                     items(items, key = { it.id }) { item -> MediaSpine(item, selected?.id == item.id) { onSelect(item) } }
                 }
-                Box(Modifier.fillMaxWidth().height(14.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = .62f)))
-                Box(Modifier.fillMaxWidth().height(7.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = .28f)))
+                Box(Modifier.fillMaxWidth().height(12.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = .62f)))
+                Box(Modifier.fillMaxWidth().height(6.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = .28f)))
             }
         }
         if (alphabetNavigation) {
@@ -349,9 +376,7 @@ private fun AlphabetScrubber(current: String, items: List<MediaItem>, onLetter: 
         .filter { enabled[letters[it]] == true }
         .minByOrNull { kotlin.math.abs(it - index) } ?: index
     Box(
-        Modifier.fillMaxWidth().height(70.dp).padding(horizontal = 8.dp, vertical = 5.dp)
-            .clip(RoundedCornerShape(18.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+        Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 8.dp, vertical = 2.dp)
             .pointerInput(items) {
                 awaitEachGesture {
                     val down = awaitFirstDown()
@@ -391,12 +416,12 @@ private fun AlphabetScrubber(current: String, items: List<MediaItem>, onLetter: 
             }
     ) {
         val focus = touchedIndex ?: currentIndex
-        Row(Modifier.fillMaxSize().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxSize().padding(horizontal = 2.dp), verticalAlignment = Alignment.CenterVertically) {
             letters.forEachIndexed { index, letter ->
                 val active = focus == index
                 val available = enabled[letter] == true
                 val distance = kotlin.math.abs(index - focus)
-                val targetScale = when (distance) { 0 -> 2f; 1 -> 1.55f; 2 -> 1.25f; 3 -> 1.1f; else -> 1f }
+                val targetScale = when (distance) { 0 -> 2.3f; 1 -> 1.7f; 2 -> 1.3f; 3 -> 1.08f; else -> 1f }
                 val scale by animateFloatAsState(if (available) targetScale else 1f, label = "letter magnification")
                 Box(
                     Modifier.weight(1f).fillMaxHeight().zIndex(scale).graphicsLayer { scaleX = scale; scaleY = scale },
@@ -404,11 +429,11 @@ private fun AlphabetScrubber(current: String, items: List<MediaItem>, onLetter: 
                 ) {
                     Text(
                         letter.toString(),
-                        fontSize = 10.sp,
+                        fontSize = if (active) 15.sp else 10.sp,
                         fontWeight = if (active) FontWeight.Black else FontWeight.Medium,
                         color = when { active -> MaterialTheme.colorScheme.primary; available -> MaterialTheme.colorScheme.onSurfaceVariant; else -> MaterialTheme.colorScheme.outlineVariant }
                     )
-                    if (active) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp).size(4.dp).clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.primary))
+                    if (active) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 3.dp).size(3.dp).clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.primary))
                 }
             }
         }
@@ -420,9 +445,25 @@ private fun MediaSpine(item: MediaItem, selected: Boolean, onClick: () -> Unit) 
     val (spineWidth, spineHeight) = formatSize(item.format)
     val lift by animateDpAsState(if (selected) (-18).dp else 0.dp, label = "spine lift")
     val color = formatColor(item.format)
-    Box(Modifier.width(maxOf(50.dp, spineWidth + 14.dp)).requiredHeight(258.dp).clickable(onClick = onClick).semantics { contentDescription = item.title + ", " + item.format }, contentAlignment = Alignment.BottomCenter) {
+    Box(Modifier.width(maxOf(40.dp, spineWidth + 6.dp)).requiredHeight(258.dp).clickable(onClick = onClick).semantics { contentDescription = item.title + ", " + item.format }, contentAlignment = Alignment.BottomCenter) {
         Box(Modifier.offset(y = lift).width(spineWidth).height(spineHeight).clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp)).background(color).border(1.dp, Color.White.copy(alpha = .2f), RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp)).animateContentSize(), contentAlignment = Alignment.Center) {
-            Text(item.title, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.rotate(-90f).width(spineHeight - 34.dp))
+            Canvas(Modifier.fillMaxSize().semantics { contentDescription = item.title }) {
+                val canvas = drawContext.canvas.nativeCanvas
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    color = android.graphics.Color.WHITE
+                    textAlign = Paint.Align.CENTER
+                    typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                }
+                val usableLength = (size.height - 44.dp.toPx()).coerceAtLeast(48.dp.toPx())
+                val measuredAtBase = 12.sp.toPx()
+                paint.textSize = measuredAtBase
+                val naturalWidth = paint.measureText(item.title).coerceAtLeast(1f)
+                paint.textSize = (measuredAtBase * (usableLength / naturalWidth)).coerceIn(7.sp.toPx(), 12.sp.toPx())
+                canvas.save()
+                canvas.rotate(-90f, size.width / 2f, size.height / 2f)
+                canvas.drawText(item.title, size.width / 2f, size.height / 2f + paint.textSize * .34f, paint)
+                canvas.restore()
+            }
             Text(item.format.take(3).uppercase(), color = Color.White.copy(alpha = .78f), fontSize = 8.sp, maxLines = 1, modifier = Modifier.align(Alignment.BottomCenter).padding(3.dp))
         }
     }
@@ -486,4 +527,121 @@ private fun QuickView(item: MediaItem, onDismiss: () -> Unit, onFavorite: () -> 
 private fun ManualAddDialog(kind: MediaKind, onDismiss: () -> Unit, onAdd: (String, String, Int?) -> Unit) {
     var title by remember { mutableStateOf("") }; var format by remember { mutableStateOf(if (kind == MediaKind.VIDEO) "Blu-ray" else "CD") }; var year by remember { mutableStateOf("") }
     AlertDialog(onDismissRequest = onDismiss, title = { Text(stringResource(R.string.add_manually)) }, text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { OutlinedTextField(title, { title = it }, label = { Text(stringResource(R.string.title)) }); OutlinedTextField(format, { format = it }, label = { Text(stringResource(R.string.format)) }); OutlinedTextField(year, { year = it.filter(Char::isDigit).take(4) }, label = { Text(stringResource(R.string.year)) }) } }, confirmButton = { TextButton({ if (title.isNotBlank() && format.isNotBlank()) onAdd(title.trim(), format.trim(), year.toIntOrNull()) }, enabled = title.isNotBlank() && format.isNotBlank()) { Text(stringResource(R.string.add)) } }, dismissButton = { TextButton(onDismiss) { Text(stringResource(R.string.cancel)) } })
+}
+
+@Composable
+private fun CreateShelfDialog(
+    initialKind: MediaKind,
+    onDismiss: () -> Unit,
+    onCreate: (String, MediaKind) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var kind by remember { mutableStateOf(initialKind) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.new_shelf)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.shelf_name)) }, singleLine = true)
+                Text(stringResource(R.string.shelf_type), style = MaterialTheme.typography.labelLarge)
+                listOf(MediaKind.VIDEO, MediaKind.AUDIO).forEach { value ->
+                    Row(Modifier.fillMaxWidth().clickable { kind = value }.padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(selected = kind == value, onClick = { kind = value })
+                        Text(stringResource(if (value == MediaKind.VIDEO) R.string.video_shelf else R.string.audio_shelf), Modifier.padding(start = 8.dp))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onCreate(name.trim(), kind) }, enabled = name.isNotBlank()) { Text(stringResource(R.string.create_shelf)) }
+        },
+        dismissButton = { TextButton(onDismiss) { Text(stringResource(R.string.cancel)) } }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MediaDetailsSheet(
+    item: MediaItem,
+    shelves: List<ShelfEntity>,
+    onDismiss: () -> Unit,
+    onSave: (MediaItem) -> Unit,
+    onDelete: () -> Unit
+) {
+    var title by remember(item.id) { mutableStateOf(item.title) }
+    var originalTitle by remember(item.id) { mutableStateOf(item.originalTitle) }
+    var format by remember(item.id) { mutableStateOf(item.format) }
+    var year by remember(item.id) { mutableStateOf(item.year?.toString().orEmpty()) }
+    var barcode by remember(item.id) { mutableStateOf(item.barcode) }
+    var location by remember(item.id) { mutableStateOf(item.location) }
+    var notes by remember(item.id) { mutableStateOf(item.notes) }
+    var rating by remember(item.id) { mutableStateOf(item.rating) }
+    var favorite by remember(item.id) { mutableStateOf(item.favorite) }
+    var played by remember(item.id) { mutableStateOf(item.played) }
+    var watchlist by remember(item.id) { mutableStateOf(item.inWatchlist) }
+    var shelfId by remember(item.id) { mutableStateOf(item.shelfId) }
+    var confirmDelete by remember { mutableStateOf(false) }
+
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            Modifier.fillMaxWidth().heightIn(max = 720.dp).verticalScroll(rememberScrollState()).imePadding().padding(horizontal = 20.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                MediaCover(item, Modifier.size(66.dp, 92.dp), compact = true)
+                Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                    Text(stringResource(R.string.media_details), style = MaterialTheme.typography.headlineSmall)
+                    Text(stringResource(if (item.kind == MediaKind.VIDEO) R.string.video_shelf else R.string.audio_shelf), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            OutlinedTextField(title, { title = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.title)) }, singleLine = true)
+            OutlinedTextField(originalTitle, { originalTitle = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.original_title)) }, singleLine = true)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedTextField(format, { format = it }, Modifier.weight(1f), label = { Text(stringResource(R.string.format)) }, singleLine = true)
+                OutlinedTextField(year, { year = it.filter(Char::isDigit).take(4) }, Modifier.width(120.dp), label = { Text(stringResource(R.string.year)) }, singleLine = true)
+            }
+            OutlinedTextField(barcode, { barcode = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.barcode)) }, singleLine = true)
+            OutlinedTextField(location, { location = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.location)) }, singleLine = true)
+            if (shelves.isNotEmpty()) {
+                Text(stringResource(R.string.move_to_shelf), style = MaterialTheme.typography.labelLarge)
+                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    shelves.forEach { shelf -> FilterChip(shelfId == shelf.id, { shelfId = shelf.id }, { Text(shelf.name, maxLines = 1) }) }
+                }
+            }
+            Text(stringResource(R.string.own_rating), style = MaterialTheme.typography.labelLarge)
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                FilterChip(rating == null, { rating = null }, { Text(stringResource(R.string.no_rating)) })
+                (1..10).forEach { halfStar ->
+                    val value = halfStar / 2f
+                    FilterChip(rating == value, { rating = value }, { Text("★ %.1f".format(value), maxLines = 1) })
+                }
+            }
+            FilterChip(played, { played = !played }, { Text(stringResource(if (item.kind == MediaKind.VIDEO) R.string.watched else R.string.listened)) })
+            FilterChip(favorite, { favorite = !favorite }, { Text(stringResource(R.string.favorite)) })
+            FilterChip(watchlist, { watchlist = !watchlist }, { Text(stringResource(if (item.kind == MediaKind.VIDEO) R.string.watchlist else R.string.listen_list)) })
+            OutlinedTextField(notes, { notes = it }, Modifier.fillMaxWidth(), label = { Text(stringResource(R.string.notes)) }, minLines = 3)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { confirmDelete = true }) {
+                    Icon(Icons.Outlined.Delete, null)
+                    Text(stringResource(R.string.delete_media), Modifier.padding(start = 6.dp))
+                }
+                Button(
+                    onClick = {
+                        onSave(item.copy(title = title.trim(), originalTitle = originalTitle.trim(), format = format.trim(), year = year.toIntOrNull(), barcode = barcode.trim(), location = location.trim(), rating = rating, favorite = favorite, played = played, inWatchlist = watchlist, notes = notes.trim(), shelfId = shelfId))
+                    },
+                    enabled = title.isNotBlank() && format.isNotBlank()
+                ) { Text(stringResource(R.string.save)) }
+            }
+            Spacer(Modifier.height(18.dp))
+        }
+    }
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(stringResource(R.string.delete_media)) },
+            text = { Text(stringResource(R.string.delete_media_confirmation, item.title)) },
+            confirmButton = { TextButton({ confirmDelete = false; onDelete() }) { Text(stringResource(R.string.delete)) } },
+            dismissButton = { TextButton({ confirmDelete = false }) { Text(stringResource(R.string.cancel)) } }
+        )
+    }
 }
