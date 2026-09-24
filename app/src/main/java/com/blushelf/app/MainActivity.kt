@@ -11,6 +11,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Swipe
@@ -31,6 +34,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.blushelf.app.ui.BluShelfTheme
@@ -112,7 +117,10 @@ private fun BluShelfRoot(app: BluShelfViewModel = viewModel()) {
             Scaffold(
                 snackbarHost = { SnackbarHost(snackbar) },
                 bottomBar = {
-                    NavigationBar {
+                    NavigationBar(
+                        modifier = Modifier.navigationBarsPadding().height(64.dp),
+                        windowInsets = WindowInsets(0, 0, 0, 0)
+                    ) {
                         NavigationBarItem(destination == Destination.SHELF, { destination = Destination.SHELF }, { Icon(Icons.Outlined.VideoLibrary, null) }, label = { Text(stringResource(R.string.shelf)) })
                         NavigationBarItem(destination == Destination.SWIPE, { destination = Destination.SWIPE }, { Icon(Icons.Outlined.Swipe, null) }, label = { Text(stringResource(R.string.swipe)) })
                         NavigationBarItem(destination == Destination.SETTINGS, { destination = Destination.SETTINGS }, { Icon(Icons.Outlined.Settings, null) }, label = { Text(stringResource(R.string.settings)) })
