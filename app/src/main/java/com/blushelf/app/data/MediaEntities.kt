@@ -6,6 +6,14 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
+@Entity(tableName = "shelves")
+data class ShelfEntity(
+    @PrimaryKey val id: String,
+    val name: String,
+    val kind: String,
+    @ColumnInfo(name = "built_in") val builtIn: Boolean
+)
+
 @Entity(tableName = "works", indices = [Index("sort_key")])
 data class WorkEntity(
     @PrimaryKey val id: String,
@@ -31,7 +39,7 @@ data class EditionEntity(
 @Entity(
     tableName = "owned_copies",
     foreignKeys = [ForeignKey(entity = EditionEntity::class, parentColumns = ["id"], childColumns = ["edition_id"], onDelete = ForeignKey.CASCADE)],
-    indices = [Index("edition_id"), Index("location")]
+    indices = [Index("edition_id"), Index("location"), Index("shelf_id")]
 )
 data class OwnedCopyEntity(
     @PrimaryKey val id: String,
@@ -42,7 +50,8 @@ data class OwnedCopyEntity(
     val played: Boolean,
     @ColumnInfo(name = "in_watchlist") val inWatchlist: Boolean,
     val notes: String,
-    @ColumnInfo(name = "added_at") val addedAt: Long
+    @ColumnInfo(name = "added_at") val addedAt: Long,
+    @ColumnInfo(name = "shelf_id", defaultValue = "'shelf-video'") val shelfId: String
 )
 
 data class MediaRow(
@@ -58,7 +67,8 @@ data class MediaRow(
     val favorite: Boolean,
     val played: Boolean,
     @ColumnInfo(name = "in_watchlist") val inWatchlist: Boolean,
-    val notes: String
+    val notes: String,
+    @ColumnInfo(name = "shelf_id") val shelfId: String
 ) {
-    fun toMediaItem() = MediaItem(copyId, title, originalTitle, MediaKind.valueOf(kind), format, year, barcode, location, rating, favorite, played, inWatchlist, notes)
+    fun toMediaItem() = MediaItem(copyId, title, originalTitle, MediaKind.valueOf(kind), format, year, barcode, location, rating, favorite, played, inWatchlist, notes, shelfId)
 }
