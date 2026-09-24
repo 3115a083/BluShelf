@@ -27,7 +27,8 @@ The following capabilities describe the planned product. The implemented test-ve
 BluShelf is under active development. The Android application is built with Kotlin, Jetpack Compose, Material 3 and Room. The current test version includes:
 
 - A persistent Video and Audio collection
-- A virtual shelf with format-specific readable spines, generated local cover representations, media quick view and a gesture-driven A-Z scrubber
+- A virtual shelf with format-specific readable spines, generated local cover representations, media quick view and a magnifying horizontal A-Z scrubber
+- One compact shelf-options menu for working filters, sorting and view selection
 - Simple and detailed list views
 - Local search, title/year/rating sorting and manual media entry
 - UTF-8 CSV import and export through Android system file pickers
