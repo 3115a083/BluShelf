@@ -33,4 +33,11 @@
     <string name="export_csv">Export CSV</string>
     <string name="export_success">Collection exported successfully</string>
     <string name="export_failure">The collection could not be exported</string>
+    <string name="shelf_options">Shelf options</string>
+    <string name="sort_by">Sort by</string>
+    <string name="filter_by">Filter by</string>
+    <string name="view_as">View as</string>
+    <string name="show_all">Show all</string>
+    <string name="no_filter_results">No media match these options</string>
+    <string name="clear_filters">Clear search and filters</string>
 </resources>
