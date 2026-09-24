@@ -12,7 +12,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Settings
@@ -22,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -64,6 +68,7 @@ private enum class Destination { SHELF, SWIPE, SETTINGS }
 private fun BluShelfRoot(app: BluShelfViewModel = viewModel()) {
     BluShelfTheme(app.themeMode, app.dynamicColor, app.palette) {
         val items by app.items.collectAsStateWithLifecycle()
+        val shelves by app.shelves.collectAsStateWithLifecycle()
         val context = LocalContext.current
         var destination by rememberSaveable { mutableStateOf(Destination.SHELF) }
         var message by remember { mutableStateOf<String?>(null) }
@@ -117,30 +122,40 @@ private fun BluShelfRoot(app: BluShelfViewModel = viewModel()) {
             Scaffold(
                 snackbarHost = { SnackbarHost(snackbar) },
                 bottomBar = {
-                    NavigationBar(
-                        modifier = Modifier.navigationBarsPadding().height(64.dp),
-                        windowInsets = WindowInsets(0, 0, 0, 0)
-                    ) {
-                        NavigationBarItem(destination == Destination.SHELF, { destination = Destination.SHELF }, { Icon(Icons.Outlined.VideoLibrary, null) }, label = { Text(stringResource(R.string.shelf)) })
-                        NavigationBarItem(destination == Destination.SWIPE, { destination = Destination.SWIPE }, { Icon(Icons.Outlined.Swipe, null) }, label = { Text(stringResource(R.string.swipe)) })
-                        NavigationBarItem(destination == Destination.SETTINGS, { destination = Destination.SETTINGS }, { Icon(Icons.Outlined.Settings, null) }, label = { Text(stringResource(R.string.settings)) })
+                    Surface(modifier = Modifier.fillMaxWidth(), color = androidx.compose.material3.MaterialTheme.colorScheme.surface) {
+                        Column {
+                            NavigationBar(
+                                modifier = Modifier.fillMaxWidth().height(56.dp),
+                                windowInsets = WindowInsets(0, 0, 0, 0)
+                            ) {
+                                NavigationBarItem(destination == Destination.SHELF, { destination = Destination.SHELF }, { Icon(Icons.Outlined.VideoLibrary, null) }, label = { Text(stringResource(R.string.shelf)) })
+                                NavigationBarItem(destination == Destination.SWIPE, { destination = Destination.SWIPE }, { Icon(Icons.Outlined.Swipe, null) }, label = { Text(stringResource(R.string.swipe)) })
+                                NavigationBarItem(destination == Destination.SETTINGS, { destination = Destination.SETTINGS }, { Icon(Icons.Outlined.Settings, null) }, label = { Text(stringResource(R.string.settings)) })
+                            }
+                            Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+                        }
                     }
                 }
             ) { outerPadding ->
                 androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.padding(bottom = outerPadding.calculateBottomPadding())) {
                     when (destination) {
                         Destination.SHELF -> ShelfScreen(
-                            allItems = items, shelfKind = app.shelfKind, view = app.shelfView,
-                            onShelfKind = app::updateShelfKind, onView = app::updateShelfView,
+                            allItems = items, shelves = shelves, selectedShelfId = app.selectedShelfId,
+                            shelfKind = app.shelfKind, view = app.shelfView,
+                            onSelectShelf = { shelf -> app.selectShelf(shelf.id, ShelfKind.valueOf(shelf.kind)) },
+                            onCreateShelf = { name, kind -> app.createShelf(name, kind) },
+                            onView = app::updateShelfView,
                             onImport = { importer.launch(arrayOf("text/csv", "text/comma-separated-values", "text/plain")) },
                             onUnavailable = { message = it }, onAdd = app::addManual,
+                            onUpdate = app::updateMedia, onDelete = app::deleteMedia,
                             onFavorite = app::toggleFavorite, onPlayed = app::togglePlayed, onWatchlist = app::toggleWatchlist
                         )
-                        Destination.SWIPE -> SwipeScreen(items, app.shelfKind) { destination = Destination.SHELF }
+                        Destination.SWIPE -> SwipeScreen(items, app.shelfKind, app.selectedShelfId) { destination = Destination.SHELF }
                         Destination.SETTINGS -> SettingsScreen(
                             theme = app.themeMode,
                             dynamic = app.dynamicColor,
                             palette = app.palette,
+                            shelves = shelves,
                             defaultView = app.shelfView,
                             defaultShelf = app.shelfKind,
                             wishlistGhosts = app.showWishlistGhosts,
@@ -151,6 +166,8 @@ private fun BluShelfRoot(app: BluShelfViewModel = viewModel()) {
                             onPalette = app::updatePalette,
                             onDefaultView = app::updateShelfView,
                             onDefaultShelf = app::updateShelfKind,
+                            onCreateShelf = { name, kind -> app.createShelf(name, kind) },
+                            onDeleteShelf = app::deleteShelf,
                             onWishlistGhosts = app::setWishlistGhosts,
                             onBatchScanning = app::updateBatchScanning,
                             onHaptic = app::updateHapticConfirmation,
