@@ -40,4 +40,24 @@
     <string name="show_all">Show all</string>
     <string name="no_filter_results">No media match these options</string>
     <string name="clear_filters">Clear search and filters</string>
+    <string name="new_shelf">New shelf</string>
+    <string name="shelf_name">Shelf name</string>
+    <string name="shelf_type">Media type</string>
+    <string name="create_shelf">Create shelf</string>
+    <string name="media_details">Media details</string>
+    <string name="original_title">Original title</string>
+    <string name="barcode">Barcode</string>
+    <string name="location">Location</string>
+    <string name="move_to_shelf">Move to shelf</string>
+    <string name="own_rating">Your rating</string>
+    <string name="no_rating">Not rated</string>
+    <string name="notes">Notes</string>
+    <string name="save">Save</string>
+    <string name="delete_media">Delete medium</string>
+    <string name="delete_media_confirmation">Delete “%1$s” from this device?</string>
+    <string name="delete">Delete</string>
+    <string name="custom_shelf_count">%1$d shelves, stored on this device</string>
+    <string name="add_shelf">Add shelf</string>
+    <string name="delete_shelf">Delete shelf</string>
+    <string name="delete_shelf_confirmation">Move its media to the standard shelf, then delete “%1$s”?</string>
 </resources>
