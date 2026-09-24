@@ -40,4 +40,24 @@
     <string name="show_all">Alle anzeigen</string>
     <string name="no_filter_results">Keine Medien passen zu dieser Auswahl</string>
     <string name="clear_filters">Suche und Filter zurücksetzen</string>
+    <string name="new_shelf">Neues Regal</string>
+    <string name="shelf_name">Regalname</string>
+    <string name="shelf_type">Medientyp</string>
+    <string name="create_shelf">Regal erstellen</string>
+    <string name="media_details">Mediendetails</string>
+    <string name="original_title">Originaltitel</string>
+    <string name="barcode">Barcode</string>
+    <string name="location">Standort</string>
+    <string name="move_to_shelf">In Regal verschieben</string>
+    <string name="own_rating">Deine Bewertung</string>
+    <string name="no_rating">Nicht bewertet</string>
+    <string name="notes">Notizen</string>
+    <string name="save">Speichern</string>
+    <string name="delete_media">Medium löschen</string>
+    <string name="delete_media_confirmation">„%1$s“ von diesem Gerät löschen?</string>
+    <string name="delete">Löschen</string>
+    <string name="custom_shelf_count">%1$d Regale, lokal auf diesem Gerät gespeichert</string>
+    <string name="add_shelf">Regal hinzufügen</string>
+    <string name="delete_shelf">Regal löschen</string>
+    <string name="delete_shelf_confirmation">Medien in das Standardregal verschieben und „%1$s“ löschen?</string>
 </resources>
