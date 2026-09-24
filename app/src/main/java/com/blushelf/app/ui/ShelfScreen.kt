@@ -2,6 +2,7 @@ package com.blushelf.app.ui
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -32,8 +33,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.List
-import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AudioFile
@@ -47,8 +46,8 @@ import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.UploadFile
 import androidx.compose.material.icons.outlined.VideoFile
-import androidx.compose.material.icons.outlined.ViewAgenda
 import androidx.compose.material.icons.outlined.WatchLater
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -65,6 +64,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -81,6 +81,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.zIndex
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
@@ -105,6 +106,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 private enum class SortMode { TITLE, YEAR, RATING }
+private enum class FilterMode { ALL, FAVORITES, UNPLAYED, WATCHLIST }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,7 +117,6 @@ fun ShelfScreen(
     onAdd: (String, MediaKind, String, Int?) -> Unit,
     onFavorite: (MediaItem) -> Unit, onPlayed: (MediaItem) -> Unit, onWatchlist: (MediaItem) -> Unit
 ) {
-    val filtersComing = stringResource(R.string.filters_coming)
     val scannerUnavailable = stringResource(R.string.scanner_not_available)
     val metadataUnavailable = stringResource(R.string.metadata_not_configured)
     val detailsComing = stringResource(R.string.details_coming)
@@ -123,12 +124,21 @@ fun ShelfScreen(
     var searchVisible by rememberSaveable { mutableStateOf(false) }
     var shelfMenu by remember { mutableStateOf(false) }
     var addMenu by remember { mutableStateOf(false) }
-    var sortMenu by remember { mutableStateOf(false) }
+    var controlsOpen by remember { mutableStateOf(false) }
     var sort by rememberSaveable { mutableStateOf(SortMode.TITLE) }
+    var filter by rememberSaveable { mutableStateOf(FilterMode.ALL) }
     var selected by remember { mutableStateOf<MediaItem?>(null) }
     var showManual by remember { mutableStateOf(false) }
     val kind = if (shelfKind == ShelfKind.VIDEO) MediaKind.VIDEO else MediaKind.AUDIO
-    val visible = allItems.filter { it.kind == kind && it.title.contains(query, true) }.let { values ->
+    val shelfItems = allItems.filter { it.kind == kind }
+    val visible = shelfItems.filter {
+        it.title.contains(query, true) && when (filter) {
+            FilterMode.ALL -> true
+            FilterMode.FAVORITES -> it.favorite
+            FilterMode.UNPLAYED -> !it.played
+            FilterMode.WATCHLIST -> it.inWatchlist
+        }
+    }.let { values ->
         when (sort) {
             SortMode.TITLE -> values.sortedBy { titleSortKey(it.title) }
             SortMode.YEAR -> values.sortedWith(compareBy<MediaItem> { it.year ?: Int.MAX_VALUE }.thenBy { titleSortKey(it.title) })
@@ -149,12 +159,13 @@ fun ShelfScreen(
             },
             actions = {
                 IconButton({ searchVisible = !searchVisible }) { Icon(if (searchVisible) Icons.Outlined.Close else Icons.Outlined.Search, stringResource(R.string.search)) }
-                Box { IconButton({ sortMenu = true }) { Icon(Icons.AutoMirrored.Outlined.Sort, stringResource(R.string.sort_filter)) }; DropdownMenu(sortMenu, { sortMenu = false }) {
-                    DropdownMenuItem({ Text(stringResource(R.string.sort_title)) }, { sort = SortMode.TITLE; sortMenu = false })
-                    DropdownMenuItem({ Text(stringResource(R.string.sort_year)) }, { sort = SortMode.YEAR; sortMenu = false })
-                    DropdownMenuItem({ Text(stringResource(R.string.sort_rating)) }, { sort = SortMode.RATING; sortMenu = false })
-                } }
-                IconButton({ onUnavailable(filtersComing) }) { Icon(Icons.Outlined.FilterList, stringResource(R.string.filters)) }
+                IconButton({ controlsOpen = true }) {
+                    Icon(
+                        Icons.Outlined.Tune,
+                        stringResource(R.string.shelf_options),
+                        tint = if (filter == FilterMode.ALL) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary
+                    )
+                }
                 Box { FilledIconButton({ addMenu = true }) { Icon(Icons.Outlined.Add, stringResource(R.string.add)) }; DropdownMenu(addMenu, { addMenu = false }) {
                     DropdownMenuItem({ Text(stringResource(R.string.scan_barcode)) }, { addMenu = false; onUnavailable(scannerUnavailable) }, leadingIcon = { Icon(Icons.Outlined.QrCodeScanner, null) })
                     DropdownMenuItem({ Text(stringResource(R.string.search_online)) }, { addMenu = false; onUnavailable(metadataUnavailable) }, leadingIcon = { Icon(Icons.Outlined.Search, null) })
@@ -166,10 +177,11 @@ fun ShelfScreen(
     }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             if (searchVisible) OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), placeholder = { Text(stringResource(R.string.search_collection)) }, singleLine = true)
-            ViewSwitcher(view, onView)
-            if (visible.isEmpty()) EmptyShelf(onImport, { showManual = true }, onUnavailable)
+            if (visible.isEmpty() && shelfItems.isNotEmpty()) {
+                FilteredEmpty { query = ""; filter = FilterMode.ALL }
+            } else if (visible.isEmpty()) EmptyShelf(onImport, { showManual = true }, onUnavailable)
             else when (view) {
-                ShelfView.VIRTUAL -> VirtualShelf(visible, selected, { selected = it })
+                ShelfView.VIRTUAL -> VirtualShelf(visible, selected, sort == SortMode.TITLE, { selected = it })
                 ShelfView.LIST -> SimpleList(visible) { selected = it }
                 ShelfView.DETAILED -> DetailedList(visible) { selected = it }
             }
@@ -177,14 +189,90 @@ fun ShelfScreen(
     }
     selected?.let { item -> QuickView(item, { selected = null }, { onFavorite(item) }, { onPlayed(item) }, { onWatchlist(item) }, { onUnavailable(detailsComing) }) }
     if (showManual) ManualAddDialog(kind, { showManual = false }, { title, format, year -> onAdd(title, kind, format, year); showManual = false })
+    if (controlsOpen) {
+        ShelfControlsSheet(
+            sort = sort,
+            filter = filter,
+            view = view,
+            onSort = { sort = it },
+            onFilter = { filter = it },
+            onView = onView,
+            onDismiss = { controlsOpen = false }
+        )
+    }
 }
 
 @Composable
-private fun ViewSwitcher(view: ShelfView, onView: (ShelfView) -> Unit) {
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilterChip(view == ShelfView.VIRTUAL, { onView(ShelfView.VIRTUAL) }, { Text(stringResource(R.string.virtual_shelf), maxLines = 1) }, leadingIcon = { Icon(Icons.Outlined.GridView, null) })
-        FilterChip(view == ShelfView.LIST, { onView(ShelfView.LIST) }, { Text(stringResource(R.string.list), maxLines = 1) }, leadingIcon = { Icon(Icons.AutoMirrored.Outlined.List, null) })
-        FilterChip(view == ShelfView.DETAILED, { onView(ShelfView.DETAILED) }, { Text(stringResource(R.string.detailed), maxLines = 1) }, leadingIcon = { Icon(Icons.Outlined.ViewAgenda, null) })
+private fun FilteredEmpty(onClear: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(Icons.Outlined.FilterList, null, Modifier.size(52.dp), tint = MaterialTheme.colorScheme.primary)
+        Text(stringResource(R.string.no_filter_results), style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 16.dp))
+        TextButton(onClear, Modifier.padding(top = 8.dp)) { Text(stringResource(R.string.clear_filters)) }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ShelfControlsSheet(
+    sort: SortMode,
+    filter: FilterMode,
+    view: ShelfView,
+    onSort: (SortMode) -> Unit,
+    onFilter: (FilterMode) -> Unit,
+    onView: (ShelfView) -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Text(
+            stringResource(R.string.shelf_options),
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+        )
+        SheetSection(stringResource(R.string.sort_by)) {
+            SheetChoice(stringResource(R.string.sort_title), sort == SortMode.TITLE) { onSort(SortMode.TITLE) }
+            SheetChoice(stringResource(R.string.sort_year), sort == SortMode.YEAR) { onSort(SortMode.YEAR) }
+            SheetChoice(stringResource(R.string.sort_rating), sort == SortMode.RATING) { onSort(SortMode.RATING) }
+        }
+        SheetSection(stringResource(R.string.filter_by)) {
+            SheetChoice(stringResource(R.string.show_all), filter == FilterMode.ALL) { onFilter(FilterMode.ALL) }
+            SheetChoice(stringResource(R.string.favorite), filter == FilterMode.FAVORITES) { onFilter(FilterMode.FAVORITES) }
+            SheetChoice(stringResource(R.string.unplayed_only), filter == FilterMode.UNPLAYED) { onFilter(FilterMode.UNPLAYED) }
+            SheetChoice(stringResource(R.string.watchlist), filter == FilterMode.WATCHLIST) { onFilter(FilterMode.WATCHLIST) }
+        }
+        SheetSection(stringResource(R.string.view_as)) {
+            SheetChoice(stringResource(R.string.virtual_shelf), view == ShelfView.VIRTUAL) { onView(ShelfView.VIRTUAL) }
+            SheetChoice(stringResource(R.string.list), view == ShelfView.LIST) { onView(ShelfView.LIST) }
+            SheetChoice(stringResource(R.string.detailed), view == ShelfView.DETAILED) { onView(ShelfView.DETAILED) }
+        }
+        Button(onDismiss, Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 18.dp)) {
+            Text(stringResource(R.string.done))
+        }
+    }
+}
+
+@Composable
+private fun SheetSection(title: String, content: @Composable () -> Unit) {
+    Text(
+        title,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 24.dp, top = 16.dp, bottom = 4.dp)
+    )
+    content()
+}
+
+@Composable
+private fun SheetChoice(title: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Text(title, Modifier.padding(start = 8.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -204,7 +292,7 @@ private fun EmptyShelf(onImport: () -> Unit, onManual: () -> Unit, onUnavailable
 }
 
 @Composable
-private fun VirtualShelf(items: List<MediaItem>, selected: MediaItem?, onSelect: (MediaItem) -> Unit) {
+private fun VirtualShelf(items: List<MediaItem>, selected: MediaItem?, alphabetNavigation: Boolean, onSelect: (MediaItem) -> Unit) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val currentLetter = items.getOrNull(listState.firstVisibleItemIndex)?.let { titleSortKey(it.title).firstOrNull()?.uppercase() } ?: "#"
@@ -241,10 +329,12 @@ private fun VirtualShelf(items: List<MediaItem>, selected: MediaItem?, onSelect:
                 Box(Modifier.fillMaxWidth().height(7.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = .28f)))
             }
         }
-        Text(stringResource(R.string.scrubber_hint), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 18.dp, top = 10.dp))
-        AlphabetScrubber(currentLetter, items) { letter ->
-            val index = items.indexOfFirst { titleSortKey(it.title).startsWith(letter, true) }
-            if (index >= 0) scope.launch { listState.scrollToItem(index) }
+        if (alphabetNavigation) {
+            Text(stringResource(R.string.scrubber_hint), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 18.dp, top = 8.dp))
+            AlphabetScrubber(currentLetter, items) { letter ->
+                val index = items.indexOfFirst { titleSortKey(it.title).startsWith(letter, true) }
+                if (index >= 0) scope.launch { listState.scrollToItem(index) }
+            }
         }
     }
 }
@@ -253,48 +343,72 @@ private fun VirtualShelf(items: List<MediaItem>, selected: MediaItem?, onSelect:
 private fun AlphabetScrubber(current: String, items: List<MediaItem>, onLetter: (Char) -> Unit) {
     val letters = ('A'..'Z').toList()
     val enabled = remember(items) { letters.associateWith { letter -> items.any { titleSortKey(it.title).startsWith(letter, true) } } }
+    val currentIndex = letters.indexOfFirst { it.toString() == current }.coerceAtLeast(0)
+    var touchedIndex by remember { mutableStateOf<Int?>(null) }
+    fun nearestEnabled(index: Int): Int = letters.indices
+        .filter { enabled[letters[it]] == true }
+        .minByOrNull { kotlin.math.abs(it - index) } ?: index
     Box(
-        Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 10.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+        Modifier.fillMaxWidth().height(70.dp).padding(horizontal = 8.dp, vertical = 5.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .pointerInput(items) {
                 awaitEachGesture {
                     val down = awaitFirstDown()
                     val started = System.currentTimeMillis()
-                    fun rawIndex(x: Float) = ((x / size.width) * letters.size).roundToInt().coerceIn(0, letters.lastIndex)
-                    val anchor = rawIndex(down.position.x)
-                    if (enabled[letters[anchor]] == true) onLetter(letters[anchor])
+                    val cellWidth = size.width / letters.size
+                    fun rawIndex(x: Float) = (x / cellWidth).toInt().coerceIn(0, letters.lastIndex)
+                    var target = nearestEnabled(rawIndex(down.position.x))
+                    var precisionAnchorX = down.position.x
+                    var precisionAnchorIndex = target
+                    var precisionStarted = false
+                    touchedIndex = target
+                    onLetter(letters[target])
                     while (true) {
                         val event = awaitPointerEvent()
                         val change = event.changes.firstOrNull { it.id == down.id } ?: break
                         if (!change.pressed) break
-                        val raw = rawIndex(change.position.x)
                         val precise = System.currentTimeMillis() - started >= 350L
-                        val target = if (precise) (anchor + (raw - anchor) * .38f).roundToInt().coerceIn(0, letters.lastIndex) else raw
-                        if (enabled[letters[target]] == true) onLetter(letters[target])
+                        if (precise && !precisionStarted) {
+                            precisionStarted = true
+                            precisionAnchorX = change.position.x
+                            precisionAnchorIndex = target
+                        }
+                        val rawTarget = if (precise) {
+                            (precisionAnchorIndex + ((change.position.x - precisionAnchorX) / cellWidth) * .38f)
+                                .roundToInt().coerceIn(0, letters.lastIndex)
+                        } else rawIndex(change.position.x)
+                        val next = nearestEnabled(rawTarget)
+                        if (next != target) {
+                            target = next
+                            touchedIndex = target
+                            onLetter(letters[target])
+                        }
                         change.consume()
                     }
+                    touchedIndex = null
                 }
             }
     ) {
-        Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-            letters.forEach { letter ->
-                val active = current == letter.toString()
+        val focus = touchedIndex ?: currentIndex
+        Row(Modifier.fillMaxSize().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            letters.forEachIndexed { index, letter ->
+                val active = focus == index
                 val available = enabled[letter] == true
+                val distance = kotlin.math.abs(index - focus)
+                val targetScale = when (distance) { 0 -> 2f; 1 -> 1.55f; 2 -> 1.25f; 3 -> 1.1f; else -> 1f }
+                val scale by animateFloatAsState(if (available) targetScale else 1f, label = "letter magnification")
                 Box(
-                    Modifier.weight(1f).fillMaxHeight().graphicsLayer {
-                        scaleX = if (active) 1.55f else 1f
-                        scaleY = if (active) 1.55f else 1f
-                    },
+                    Modifier.weight(1f).fillMaxHeight().zIndex(scale).graphicsLayer { scaleX = scale; scaleY = scale },
                     contentAlignment = Alignment.Center
                 ) {
-                    if (active) {
-                        Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primary) {
-                            Text(letter.toString(), color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 7.dp, vertical = 5.dp))
-                        }
-                    } else {
-                        Text(letter.toString(), style = MaterialTheme.typography.labelSmall, color = if (available) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.outlineVariant)
-                    }
+                    Text(
+                        letter.toString(),
+                        fontSize = 10.sp,
+                        fontWeight = if (active) FontWeight.Black else FontWeight.Medium,
+                        color = when { active -> MaterialTheme.colorScheme.primary; available -> MaterialTheme.colorScheme.onSurfaceVariant; else -> MaterialTheme.colorScheme.outlineVariant }
+                    )
+                    if (active) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 8.dp).size(4.dp).clip(RoundedCornerShape(50)).background(MaterialTheme.colorScheme.primary))
                 }
             }
         }
