@@ -82,16 +82,16 @@ private data class SwipeHistory(val index: Int, val itemId: String, val action: 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SwipeScreen(allItems: List<MediaItem>, shelfKind: ShelfKind, onGoShelf: () -> Unit) {
-    var shuffled by rememberSaveable(shelfKind) { mutableStateOf(false) }
-    var onlyUnplayed by rememberSaveable(shelfKind) { mutableStateOf(false) }
-    val candidates = remember(allItems, shelfKind, shuffled, onlyUnplayed) {
-        val filtered = allItems.filter { it.kind.name == shelfKind.name && (!onlyUnplayed || !it.played) }
+fun SwipeScreen(allItems: List<MediaItem>, shelfKind: ShelfKind, shelfId: String, onGoShelf: () -> Unit) {
+    var shuffled by rememberSaveable(shelfId) { mutableStateOf(false) }
+    var onlyUnplayed by rememberSaveable(shelfId) { mutableStateOf(false) }
+    val candidates = remember(allItems, shelfKind, shelfId, shuffled, onlyUnplayed) {
+        val filtered = allItems.filter { it.shelfId == shelfId && it.kind.name == shelfKind.name && (!onlyUnplayed || !it.played) }
         if (shuffled) filtered.shuffled(Random(filtered.joinToString { it.id }.hashCode())) else filtered
     }
-    var index by rememberSaveable(shelfKind, shuffled, onlyUnplayed) { mutableIntStateOf(0) }
+    var index by rememberSaveable(shelfId, shuffled, onlyUnplayed) { mutableIntStateOf(0) }
     var history by remember { mutableStateOf<SwipeHistory?>(null) }
-    val shortlist = remember(shelfKind) { mutableStateListOf<String>() }
+    val shortlist = remember(shelfId) { mutableStateListOf<String>() }
     var showShortlist by remember { mutableStateOf(false) }
     var picked by remember { mutableStateOf<MediaItem?>(null) }
     val current = candidates.getOrNull(index)
@@ -139,7 +139,7 @@ fun SwipeScreen(allItems: List<MediaItem>, shelfKind: ShelfKind, onGoShelf: () -
     ) { padding ->
         if (current == null) {
             SwipeEmpty(
-                hasCollection = allItems.any { it.kind.name == shelfKind.name },
+                hasCollection = allItems.any { it.shelfId == shelfId && it.kind.name == shelfKind.name },
                 onReset = { index = 0; onlyUnplayed = false },
                 onGoShelf = onGoShelf,
                 modifier = Modifier.padding(padding)
