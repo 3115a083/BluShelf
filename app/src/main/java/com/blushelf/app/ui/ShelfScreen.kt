@@ -444,13 +444,13 @@ private fun AlphabetScrubber(current: String, items: List<MediaItem>, onLetter: 
 private fun MediaSpine(item: MediaItem, selected: Boolean, onClick: () -> Unit) {
     val (spineWidth, spineHeight) = formatSize(item.format)
     val lift by animateDpAsState(if (selected) (-18).dp else 0.dp, label = "spine lift")
-    val color = formatColor(item.format)
+    val spineColor = formatColor(item.format)
     Box(Modifier.width(maxOf(40.dp, spineWidth + 6.dp)).requiredHeight(258.dp).clickable(onClick = onClick).semantics { contentDescription = item.title + ", " + item.format }, contentAlignment = Alignment.BottomCenter) {
-        Box(Modifier.offset(y = lift).width(spineWidth).height(spineHeight).clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp)).background(color).border(1.dp, Color.White.copy(alpha = .2f), RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp)).animateContentSize(), contentAlignment = Alignment.Center) {
+        Box(Modifier.offset(y = lift).width(spineWidth).height(spineHeight).clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp)).background(spineColor).border(1.dp, Color.White.copy(alpha = .2f), RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp)).animateContentSize(), contentAlignment = Alignment.Center) {
             Canvas(Modifier.fillMaxSize().semantics { contentDescription = item.title }) {
                 val canvas = drawContext.canvas.nativeCanvas
                 val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                    color = android.graphics.Color.WHITE
+                    this.color = android.graphics.Color.WHITE
                     textAlign = Paint.Align.CENTER
                     typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
                 }
