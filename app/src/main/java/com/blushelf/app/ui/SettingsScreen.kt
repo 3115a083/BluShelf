@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.Brush
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.ColorLens
@@ -38,6 +40,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -68,6 +71,8 @@ import com.blushelf.app.R
 import com.blushelf.app.ShelfKind
 import com.blushelf.app.ShelfView
 import com.blushelf.app.ThemeMode
+import com.blushelf.app.data.MediaKind
+import com.blushelf.app.data.ShelfEntity
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,6 +80,7 @@ fun SettingsScreen(
     theme: ThemeMode,
     dynamic: Boolean,
     palette: ColorPalette,
+    shelves: List<ShelfEntity>,
     defaultView: ShelfView,
     defaultShelf: ShelfKind,
     wishlistGhosts: Boolean,
@@ -85,6 +91,8 @@ fun SettingsScreen(
     onPalette: (ColorPalette) -> Unit,
     onDefaultView: (ShelfView) -> Unit,
     onDefaultShelf: (ShelfKind) -> Unit,
+    onCreateShelf: (String, MediaKind) -> Unit,
+    onDeleteShelf: (ShelfEntity) -> Unit,
     onWishlistGhosts: (Boolean) -> Unit,
     onBatchScanning: (Boolean) -> Unit,
     onHaptic: (Boolean) -> Unit,
@@ -96,6 +104,8 @@ fun SettingsScreen(
     var query by rememberSaveable { mutableStateOf("") }
     var detail by remember { mutableStateOf<Pair<String, String>?>(null) }
     var showShelves by remember { mutableStateOf(false) }
+    var showCreateShelf by remember { mutableStateOf(false) }
+    var deleteShelf by remember { mutableStateOf<ShelfEntity?>(null) }
     var showImportExport by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
 
@@ -186,7 +196,7 @@ fun SettingsScreen(
                 val locations = stringResource(R.string.locations)
                 val tags = stringResource(R.string.tags_collections)
                 SettingsSection(stringResource(R.string.collection), Icons.Outlined.Storage) {
-                    SettingsRow(stringResource(R.string.manage_shelves), stringResource(R.string.video_audio_shelves), Icons.Outlined.Storage) { showShelves = true }
+                    SettingsRow(stringResource(R.string.manage_shelves), stringResource(R.string.custom_shelf_count, shelves.size), Icons.Outlined.Storage) { showShelves = true }
                     SettingsRow(custom, notAvailable, Icons.Outlined.Tune) { show(custom, notAvailable) }
                     SettingsRow(locations, notAvailable, Icons.Outlined.Folder) { show(locations, notAvailable) }
                     SettingsRow(tags, notAvailable, Icons.Outlined.Tag) { show(tags, notAvailable) }
@@ -237,7 +247,7 @@ fun SettingsScreen(
             }
             if (matches("Über", "About", "Version", "Open Source")) item {
                 SettingsSection(stringResource(R.string.about), Icons.Outlined.Code) {
-                    SettingsRow("BluShelf", "Version 0.4.0 · Debug", Icons.Outlined.Info) { show("BluShelf", aboutBluShelf) }
+                    SettingsRow("BluShelf", "Version 0.5.0 · Debug", Icons.Outlined.Info) { show("BluShelf", aboutBluShelf) }
                     SettingsRow(stringResource(R.string.open_source_project), "github.com/3115a083/BluShelf", Icons.Outlined.Code) {
                         uriHandler.openUri("https://github.com/3115a083/BluShelf")
                     }
@@ -261,12 +271,42 @@ fun SettingsScreen(
             title = { Text(stringResource(R.string.manage_shelves)) },
             text = {
                 Column {
-                    Text(stringResource(R.string.default_shelf), style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(bottom = 8.dp))
+                    Text(stringResource(R.string.default_shelf), style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(bottom = 6.dp))
                     ChoiceRow(defaultShelf == ShelfKind.VIDEO, stringResource(R.string.video_shelf)) { onDefaultShelf(ShelfKind.VIDEO) }
                     ChoiceRow(defaultShelf == ShelfKind.AUDIO, stringResource(R.string.audio_shelf)) { onDefaultShelf(ShelfKind.AUDIO) }
+                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                    androidx.compose.foundation.lazy.LazyColumn(Modifier.heightIn(max = 240.dp)) {
+                        items(shelves.size) { index ->
+                            val shelf = shelves[index]
+                            ListItem(
+                                headlineContent = { Text(shelf.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                                supportingContent = { Text(stringResource(if (shelf.kind == MediaKind.VIDEO.name) R.string.video_shelf else R.string.audio_shelf)) },
+                                trailingContent = {
+                                    if (!shelf.builtIn) IconButton({ deleteShelf = shelf }) { Icon(Icons.Outlined.Delete, stringResource(R.string.delete_shelf)) }
+                                }
+                            )
+                        }
+                    }
                 }
             },
-            confirmButton = { TextButton({ showShelves = false }) { Text(stringResource(R.string.done)) } }
+            confirmButton = { TextButton({ showShelves = false; showCreateShelf = true }) { Text(stringResource(R.string.add_shelf)) } },
+            dismissButton = { TextButton({ showShelves = false }) { Text(stringResource(R.string.done)) } }
+        )
+    }
+    if (showCreateShelf) {
+        ShelfCreateDialog(
+            initialKind = if (defaultShelf == ShelfKind.VIDEO) MediaKind.VIDEO else MediaKind.AUDIO,
+            onDismiss = { showCreateShelf = false },
+            onCreate = { name, kind -> onCreateShelf(name, kind); showCreateShelf = false }
+        )
+    }
+    deleteShelf?.let { shelf ->
+        AlertDialog(
+            onDismissRequest = { deleteShelf = null },
+            title = { Text(stringResource(R.string.delete_shelf)) },
+            text = { Text(stringResource(R.string.delete_shelf_confirmation, shelf.name)) },
+            confirmButton = { TextButton({ onDeleteShelf(shelf); deleteShelf = null }) { Text(stringResource(R.string.delete)) } },
+            dismissButton = { TextButton({ deleteShelf = null }) { Text(stringResource(R.string.cancel)) } }
         )
     }
     if (showImportExport) {
@@ -310,6 +350,34 @@ private fun ChoiceRow(selected: Boolean, title: String, onClick: () -> Unit) {
         RadioButton(selected = selected, onClick = null)
         Text(title, Modifier.padding(start = 10.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
+}
+
+@Composable
+private fun ShelfCreateDialog(
+    initialKind: MediaKind,
+    onDismiss: () -> Unit,
+    onCreate: (String, MediaKind) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var kind by remember { mutableStateOf(initialKind) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.new_shelf)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.shelf_name)) }, singleLine = true)
+                Text(stringResource(R.string.shelf_type), style = MaterialTheme.typography.labelLarge)
+                listOf(MediaKind.VIDEO, MediaKind.AUDIO).forEach { value ->
+                    ChoiceRow(
+                        selected = kind == value,
+                        title = stringResource(if (value == MediaKind.VIDEO) R.string.video_shelf else R.string.audio_shelf)
+                    ) { kind = value }
+                }
+            }
+        },
+        confirmButton = { TextButton({ onCreate(name.trim(), kind) }, enabled = name.isNotBlank()) { Text(stringResource(R.string.create_shelf)) } },
+        dismissButton = { TextButton(onDismiss) { Text(stringResource(R.string.cancel)) } }
+    )
 }
 
 @Composable
