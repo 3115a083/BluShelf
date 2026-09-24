@@ -17,5 +17,6 @@ data class MediaItem(
     val favorite: Boolean = false,
     val played: Boolean = false,
     val inWatchlist: Boolean = false,
-    val notes: String = ""
+    val notes: String = "",
+    val shelfId: String = if (kind == MediaKind.VIDEO) "shelf-video" else "shelf-audio"
 )
